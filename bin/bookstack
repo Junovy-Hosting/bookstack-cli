@@ -10,4 +10,13 @@ if (!existsSync(distEntry)) {
   process.exit(1);
 }
 
-require(distEntry);
+const mod = require(distEntry);
+const program = mod.program || (mod.default && mod.default.program);
+if (program && typeof program.parse === 'function') {
+  program.parse(process.argv);
+} else if (typeof mod === 'function') {
+  mod();
+} else {
+  console.error('Failed to load CLI program from', distEntry);
+  process.exit(1);
+}

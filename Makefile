@@ -14,7 +14,7 @@ build:
 	bun run build
 
 cli: build
-	bun build src/bookstack-cli.ts --compile --outfile $(BINARY)
+	bun build src/runner.ts --compile --outfile $(BINARY)
 
 install: cli
 	install -d $(BINDIR)
