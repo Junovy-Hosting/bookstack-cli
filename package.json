@@ -1,6 +1,6 @@
 {
   "name": "@junovy/bookstack-cli",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "A CLI for viewing, searching, importing, and exporting BookStack content.",
   "main": "dist/bookstack-cli.js",
   "bin": {
