@@ -11,12 +11,29 @@ import { c, createSpinner, createProgressBar, configureUi, formatBytes, formatDu
 
 const program = new Command();
 
+// Read version from package.json at runtime (both from src and dist)
+function readVersion(): string {
+  try {
+    if (process.env.BOOKSTACK_CLI_VERSION) {
+      return process.env.BOOKSTACK_CLI_VERSION;
+    }
+    // dist/bookstack-cli.js -> ../package.json
+    // src/bookstack-cli.ts   -> ../package.json
+    // In npm package, package.json is always present at root
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const pkg = require('../package.json');
+    return pkg?.version || '0.0.0';
+  } catch {
+    return process.env.BOOKSTACK_CLI_VERSION || '0.0.0';
+  }
+}
+
 program
   .name("bookstack")
   .description(
     "An Automated CLI for viewing, managing, importing, and exporting content for BookStack"
   )
-  .version("1.0.0");
+  .version(readVersion());
 
 // 'help' manpage
 program
