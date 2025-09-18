@@ -1,5 +1,10 @@
 # BookStack CLI
 
+[![CI](https://github.com/Junovy-Hosting/bookstack-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/Junovy-Hosting/bookstack-cli/actions/workflows/ci.yml)
+[![Release](https://github.com/Junovy-Hosting/bookstack-cli/actions/workflows/release.yml/badge.svg)](https://github.com/Junovy-Hosting/bookstack-cli/actions/workflows/release.yml)
+[![npm version](https://img.shields.io/npm/v/%40junovy%2Fbookcase-cli?logo=npm)](https://www.npmjs.com/package/@junovy/bookcase-cli)
+[![npm downloads](https://img.shields.io/npm/dm/%40junovy%2Fbookcase-cli)](https://www.npmjs.com/package/@junovy/bookcase-cli)
+
 An Automated CLI for viewing, managing, importing, and exporting content for [BookStack](https://www.bookstackapp.com/), the open-source documentation platform.
 
 ## Installation (Bun 1.2+)
