@@ -2,8 +2,8 @@
 
 [![CI](https://github.com/Junovy-Hosting/bookstack-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/Junovy-Hosting/bookstack-cli/actions/workflows/ci.yml)
 [![Release](https://github.com/Junovy-Hosting/bookstack-cli/actions/workflows/release.yml/badge.svg)](https://github.com/Junovy-Hosting/bookstack-cli/actions/workflows/release.yml)
-[![npm version](https://img.shields.io/npm/v/%40junovy%2Fbookcase-cli?logo=npm)](https://www.npmjs.com/package/@junovy/bookcase-cli)
-[![npm downloads](https://img.shields.io/npm/dm/%40junovy%2Fbookcase-cli)](https://www.npmjs.com/package/@junovy/bookcase-cli)
+[![npm version](https://img.shields.io/npm/v/%40junovy%2Fbookstack-cli?logo=npm)](https://www.npmjs.com/package/@junovy/bookstack-cli)
+[![npm downloads](https://img.shields.io/npm/dm/%40junovy%2Fbookstack-cli)](https://www.npmjs.com/package/@junovy/bookstack-cli)
 
 An Automated CLI for viewing, managing, importing, and exporting content for [BookStack](https://www.bookstackapp.com/), the open-source documentation platform.
 
@@ -40,18 +40,20 @@ An Automated CLI for viewing, managing, importing, and exporting content for [Bo
 Use the CLI immediately without installing globally:
 
 - bunx
+
   ```bash
-  bunx @junovy/bookcase-cli bookstack --help
+  bunx @junovy/bookstack-cli bookstack --help
   ```
 
 - npx
+
   ```bash
-  npx @junovy/bookcase-cli bookstack --help
+  npx @junovy/bookstack-cli bookstack --help
   ```
 
 - pnpm (dlx)
   ```bash
-  pnpm dlx @junovy/bookcase-cli bookstack --help
+  pnpm dlx @junovy/bookstack-cli bookstack --help
   ```
 
 Note: The published CLI binary uses Node to run. Ensure Node 18+ (or 20+) is available when using bunx/npx/pnpm dlx.
@@ -61,20 +63,22 @@ Note: The published CLI binary uses Node to run. Ensure Node 18+ (or 20+) is ava
 Install the CLI globally so `bookstack` is available on your PATH:
 
 - npm
+
   ```bash
-  npm i -g @junovy/bookcase-cli
+  npm i -g @junovy/bookstack-cli
   bookstack --help
   ```
 
 - pnpm
+
   ```bash
-  pnpm add -g @junovy/bookcase-cli
+  pnpm add -g @junovy/bookstack-cli
   bookstack --help
   ```
 
 - bun
   ```bash
-  bun add -g @junovy/bookcase-cli
+  bun add -g @junovy/bookstack-cli
   bookstack --help
   ```
   (Requires Node on the system since the CLI shim uses Node.)
