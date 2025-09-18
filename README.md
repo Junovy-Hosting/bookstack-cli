@@ -1,6 +1,6 @@
 # BookStack CLI
 
-An Automated CLI for viewing, managing, importing, and exporting content for (BookStack)[https://www.bookstackapp.com/]
+An Automated CLI for viewing, managing, importing, and exporting content for [BookStack](https://www.bookstackapp.com/), the open-source documentation platform.
 
 ## Installation (Bun 1.2+)
 
@@ -400,20 +400,23 @@ Available filters (mapped to BookStack search syntax):
 
 List shelves:
 
-```bash
+````bash
 bun run dev shelves list
 
 Show shelf with books:
 ```bash
 bun run dev shelves show <id|name|slug>
-```
+````
+
 ```
 
 Show shelf and its books:
 
 ```
+
 bun run dev shelves show <id|name|slug>
-```
+
+````
 
 ### Chapter/Page Export
 
@@ -431,9 +434,12 @@ bun run dev chapter export <id|name|slug> --format plaintext
 
 # pdf
 bun run dev chapter export <id|name|slug> --format pdf --out ./chapter.pdf
-```
+````
+
 PDF export warning: generation can take longer than text formats.
+
 ```bash
+
 ```
 
 Export a page:
@@ -463,6 +469,7 @@ bun run dev find "intro" --type page,chapter
 ### Help / Man Page
 
 Show a concise CLI reference:
+
 ```bash
 bun run dev help
 # or if installed: bookstack help
