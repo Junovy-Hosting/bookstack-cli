@@ -3,13 +3,22 @@ name: 🚀 Release
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'SemVer version (e.g., 0.1.1)'
+        required: true
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        default: false
 
 jobs:
   publish-npm:
     name: Publish to npm
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,6 +36,29 @@ jobs:
 
       - name: Run unit tests
         run: bun test --timeout=30000
+
+      - name: Bump version and tag (workflow_dispatch only)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid semantic version: $VERSION" >&2; exit 1; fi
+          npm version "$VERSION" --no-git-tag-version
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git commit -am "chore(release): v$VERSION"
+          git tag "v$VERSION"
+          git push origin HEAD:main --follow-tags
+
+      - name: Create GitHub Release (auto notes)
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          name: v${{ inputs.version }}
+          generate_release_notes: true
+          prerelease: ${{ inputs.prerelease }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
