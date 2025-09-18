@@ -7,34 +7,6 @@
 
 An Automated CLI for viewing, managing, importing, and exporting content for [BookStack](https://www.bookstackapp.com/), the open-source documentation platform.
 
-## Installation (Bun 1.2+)
-
-1. Clone the repository:
-
-   ```bash
-   git clone git@github.com:Junovy-Hosting/bookstack-cli.git
-   cd bookstack-cli
-   ```
-
-2. Install Bun (if you don't have it yet):
-
-   ```bash
-   # macOS (Homebrew)
-   brew install oven-sh/bun/bun
-   bun --version  # should be >= 1.2.0
-   ```
-
-3. Install dependencies with Bun:
-
-   ```bash
-   bun install
-   ```
-
-4. Build the project:
-   ```bash
-   bun run build
-   ```
-
 ## Quick Install / One‑Liners
 
 Use the CLI immediately without installing globally:
@@ -42,18 +14,18 @@ Use the CLI immediately without installing globally:
 - bunx
 
   ```bash
-  bunx @junovy/bookstack-cli bookstack --help
+  bunx @junovy/bookstack-cli books list
   ```
 
 - npx
 
   ```bash
-  npx @junovy/bookstack-cli bookstack --help
+  npx @junovy/bookstack-cli books list
   ```
 
 - pnpm (dlx)
   ```bash
-  pnpm dlx @junovy/bookstack-cli bookstack --help
+  pnpx @junovy/bookstack-cli books list
   ```
 
 Note: The published CLI binary uses Node to run. Ensure Node 18+ (or 20+) is available when using bunx/npx/pnpm dlx.
@@ -90,7 +62,7 @@ Before using the CLI, you need to configure your BookStack credentials:
 1. Initialize a config file (optional if you prefer env vars):
 
    ```bash
-   bun run dev config init
+   bookstack config init
    ```
 
 2. Edit the created `bookstack-config.json` file with your BookStack instance details:
@@ -126,7 +98,7 @@ BOOKSTACK_TOKEN_SECRET=your-token-secret
 To point at a specific config file format/path:
 
 ```bash
-bun run dev -- --config ./bookstack.config.yaml list books
+bookstack -- --config ./bookstack.config.yaml list books
 ```
 
 ## Usage
@@ -136,25 +108,25 @@ bun run dev -- --config ./bookstack.config.yaml list books
 Import a single file:
 
 ```bash
-bun run dev import path/to/file.md --book "My Book"
+bookstack import path/to/file.md --book "My Book"
 ```
 
 Import a directory (first-level folders become chapters; files become pages):
 
 ```bash
-bun run dev import path/to/directory --book "My Book"
+bookstack import path/to/directory --book "My Book"
 ```
 
 Import with specific format:
 
 ```bash
-bun run dev import content.html --book "Documentation" --format html
+bookstack import content.html --book "Documentation" --format html
 ```
 
 Dry run to see what would be imported:
 
 ```bash
-bun run dev import content/ --book "Test" --dry-run
+bookstack import content/ --book "Test" --dry-run
 ```
 
 ### List Commands
@@ -162,20 +134,20 @@ bun run dev import content/ --book "Test" --dry-run
 Books:
 
 ```bash
-bun run dev books list
+bookstack books list
 ```
 
 Chapters (requires a book ID, name, or slug):
 
 ```bash
-bun run dev chapters list --book <id|name|slug>
+bookstack chapters list --book <id|name|slug>
 ```
 
 Pages (optionally filter by book):
 
 ```bash
-bun run dev pages list
-bun run dev pages list --book <id|name|slug>
+bookstack pages list
+bookstack pages list --book <id|name|slug>
 
 All list commands support `--json` for machine-readable output.
 ```
@@ -185,13 +157,13 @@ All list commands support `--json` for machine-readable output.
 Initialize config file:
 
 ```bash
-bun run dev config init
+bookstack config init
 ```
 
 Show current configuration:
 
 ```bash
-bun run dev config show
+bookstack config show
 ```
 
 ### Options
@@ -259,7 +231,7 @@ To use this CLI, you need to:
 Run in development mode:
 
 ```bash
-bun run dev <command>
+bookstack <command>
 ```
 
 Build for production:
@@ -336,19 +308,19 @@ You can use a single `bookstack` command without `bun run`:
 Import a documentation directory:
 
 ```bash
-bun run dev import ./docs --book "API Documentation" --format markdown
+bookstack import ./docs --book "API Documentation" --format markdown
 ```
 
 Import a single HTML file:
 
 ```bash
-bun run dev import ./manual.html --book "User Manual" --format html
+bookstack import ./manual.html --book "User Manual" --format html
 ```
 
 Test connection and list books:
 
 ```bash
-bun run dev books list
+bookstack books list
 ```
 
 > Note: This project has migrated from npm to Bun. Use `bun install`, `bun run build`, and `bun start` for all tasks.
@@ -358,7 +330,7 @@ bun run dev books list
 Show details and contents of a book:
 
 ```bash
-bun run dev book show <id|name|slug>
+bookstack book show <id|name|slug>
 # or if installed: bookstack book show <id|name|slug>
 ```
 
@@ -366,16 +338,16 @@ Export a book in various formats:
 
 ```bash
 # markdown (to stdout)
-bun run dev book export <id|name|slug> --format markdown --stdout
+bookstack book export <id|name|slug> --format markdown --stdout
 
 # html to file
-bun run dev book export <id|name|slug> --format html --out ./book.html
+bookstack book export <id|name|slug> --format html --out ./book.html
 
 # plaintext to default filename
-bun run dev book export <id|name|slug> --format plaintext
+bookstack book export <id|name|slug> --format plaintext
 
 # pdf to file
-bun run dev book export <id|name|slug> --format pdf --out ./book.pdf
+bookstack book export <id|name|slug> --format pdf --out ./book.pdf
 
 Note: PDF export can take longer to generate.
 ```
@@ -383,12 +355,12 @@ Note: PDF export can take longer to generate.
 Show a book’s chapter/page tree:
 
 ```bash
-bun run dev book tree <id|name|slug>
+bookstack book tree <id|name|slug>
 # include IDs
-bun run dev book tree <id|name|slug> --ids
+bookstack book tree <id|name|slug> --ids
 # only chapters or only pages
-bun run dev book tree <id|name|slug> --type chapter
-bun run dev book tree <id|name|slug> --type page
+bookstack book tree <id|name|slug> --type chapter
+bookstack book tree <id|name|slug> --type page
 
 Output modes:
 - `--ids` to include IDs in pretty output
@@ -400,13 +372,13 @@ Export a book's contents to a folder structure:
 
 ```bash
 # write markdown files under ./<book-slug>/
-bun run dev book export-contents <id|name|slug> --format markdown
+bookstack book export-contents <id|name|slug> --format markdown
 
 # choose directory and format
-bun run dev book export-contents <id|name|slug> --format html --dir ./out
+bookstack book export-contents <id|name|slug> --format html --dir ./out
 
 # preview without writing
-bun run dev book export-contents <id|name|slug> --dry-run
+bookstack book export-contents <id|name|slug> --dry-run
 ```
 
 ### Search
@@ -415,14 +387,14 @@ Search across books/chapters/pages:
 
 ```bash
 # free text
-bun run dev search "your query" --limit 50
+bookstack search "your query" --limit 50
 
 # with filters (combined)
-bun run dev search cloud --type page,chapter --in-name intro --updated-after 2024-01-01 \
+bookstack search cloud --type page,chapter --in-name intro --updated-after 2024-01-01 \
   --tag docs --tag-kv topic=storage --sort-by last_commented
 
 # json output
-bun run dev search cloud --type page --json
+bookstack search cloud --type page --json
 
 Global output flags:
 - `--no-color` disable colors
@@ -454,11 +426,11 @@ Available filters (mapped to BookStack search syntax):
 List shelves:
 
 ````bash
-bun run dev shelves list
+bookstack shelves list
 
 Show shelf with books:
 ```bash
-bun run dev shelves show <id|name|slug>
+bookstack shelves show <id|name|slug>
 ````
 
 ```
@@ -467,7 +439,7 @@ Show shelf and its books:
 
 ```
 
-bun run dev shelves show <id|name|slug>
+bookstack shelves show <id|name|slug>
 
 ````
 
@@ -477,16 +449,16 @@ Export a chapter:
 
 ```bash
 # markdown to stdout
-bun run dev chapter export <id|name|slug> --format markdown --stdout
+bookstack chapter export <id|name|slug> --format markdown --stdout
 
 # html to file
-bun run dev chapter export <id|name|slug> --format html --out ./chapter.html
+bookstack chapter export <id|name|slug> --format html --out ./chapter.html
 
 # plaintext (default filename)
-bun run dev chapter export <id|name|slug> --format plaintext
+bookstack chapter export <id|name|slug> --format plaintext
 
 # pdf
-bun run dev chapter export <id|name|slug> --format pdf --out ./chapter.pdf
+bookstack chapter export <id|name|slug> --format pdf --out ./chapter.pdf
 ````
 
 PDF export warning: generation can take longer than text formats.
@@ -498,10 +470,10 @@ PDF export warning: generation can take longer than text formats.
 Export a page:
 
 ```bash
-bun run dev page export <id|name|slug> --format markdown --stdout
-bun run dev page export <id|name|slug> --format html --out ./page.html
-bun run dev page export <id|name|slug> --format plaintext
-bun run dev page export <id|name|slug> --format pdf --out ./page.pdf
+bookstack page export <id|name|slug> --format markdown --stdout
+bookstack page export <id|name|slug> --format html --out ./page.html
+bookstack page export <id|name|slug> --format plaintext
+bookstack page export <id|name|slug> --format pdf --out ./page.pdf
 ```
 
 ### Chapter/Page Show & Find IDs
@@ -510,13 +482,13 @@ Inspect a chapter or page and find IDs for exports/automation:
 
 ```bash
 # show chapter with its pages
-bun run dev chapter show <id|name|slug>
+bookstack chapter show <id|name|slug>
 
 # show page details
-bun run dev page show <id|name|slug>
+bookstack page show <id|name|slug>
 
 # find IDs (fuzzy search)
-bun run dev find "intro" --type page,chapter
+bookstack find "intro" --type page,chapter
 ```
 
 ### Help / Man Page
@@ -524,7 +496,7 @@ bun run dev find "intro" --type page,chapter
 Show a concise CLI reference:
 
 ```bash
-bun run dev help
+bookstack help
 # or if installed: bookstack help
 ```
 
