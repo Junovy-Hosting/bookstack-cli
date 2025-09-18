@@ -196,6 +196,19 @@ For list commands, `--book` accepts ID, name, or slug.
 - Files within a subdirectory (and its nested folders) become pages inside that chapter. Nested folders are flattened into their chapter.
 - Use `--flatten` to ignore chapters and import all files directly into the book.
 
+### Book Metadata (.book-metadata.json)
+
+Place an optional `.book-metadata.json` at the root of the directory to set the book’s name and description:
+
+```json
+{
+  "name": "Human Readable Book Name",
+  "description": "Optional description shown in BookStack"
+}
+```
+
+Precedence for the book name is: CLI `--book` > `.book-metadata.json` > directory name.
+
 ### Chapter Metadata (.chapter-metadata.json)
 
 Place an optional `.chapter-metadata.json` file inside any subdirectory to customize the chapter’s details:

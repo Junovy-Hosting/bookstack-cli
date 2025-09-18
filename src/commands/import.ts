@@ -80,9 +80,12 @@ export class ImportCommand {
 
   private async importDirectory(dirPath: string, options: ImportOptions): Promise<void> {
     const items = await fs.readdir(dirPath);
-    const bookName = options.book || path.basename(dirPath);
+    const bookMeta = await this.readBookMetadata(dirPath);
+    const bookName = options.book || bookMeta.name || path.basename(dirPath);
     const targetBook = await this.getTargetBook(bookName, options.dryRun);
-    
+    if (!options.dryRun && bookMeta.description) {
+      try { await this.client.updateBook(targetBook.id, { description: bookMeta.description }); } catch {}
+    }
     console.log(c.bold(`Processing directory as book: ${targetBook.name}`));
 
     const total = await this.countFiles(dirPath, options);
@@ -218,6 +221,19 @@ export class ImportCommand {
       }
     } catch (e) {
       console.warn(`  Warning: failed to parse ${metaPath}: ${(e as Error).message}`);
+    }
+    return {};
+  }
+
+  private async readBookMetadata(dir: string): Promise<{ name?: string; description?: string }> {
+    const metaPath = path.join(dir, '.book-metadata.json');
+    try {
+      if (await fs.pathExists(metaPath)) {
+        const data = JSON.parse(await fs.readFile(metaPath, 'utf8')) as { name?: string; description?: string };
+        return { name: data.name, description: data.description };
+      }
+    } catch (e) {
+      console.warn(`Warning: failed to parse ${metaPath}: ${(e as Error).message}`);
     }
     return {};
   }
