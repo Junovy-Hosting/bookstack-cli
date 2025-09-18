@@ -35,6 +35,50 @@ An Automated CLI for viewing, managing, importing, and exporting content for [Bo
    bun run build
    ```
 
+## Quick Install / One‑Liners
+
+Use the CLI immediately without installing globally:
+
+- bunx
+  ```bash
+  bunx @junovy/bookcase-cli bookstack --help
+  ```
+
+- npx
+  ```bash
+  npx @junovy/bookcase-cli bookstack --help
+  ```
+
+- pnpm (dlx)
+  ```bash
+  pnpm dlx @junovy/bookcase-cli bookstack --help
+  ```
+
+Note: The published CLI binary uses Node to run. Ensure Node 18+ (or 20+) is available when using bunx/npx/pnpm dlx.
+
+## Global Install
+
+Install the CLI globally so `bookstack` is available on your PATH:
+
+- npm
+  ```bash
+  npm i -g @junovy/bookcase-cli
+  bookstack --help
+  ```
+
+- pnpm
+  ```bash
+  pnpm add -g @junovy/bookcase-cli
+  bookstack --help
+  ```
+
+- bun
+  ```bash
+  bun add -g @junovy/bookcase-cli
+  bookstack --help
+  ```
+  (Requires Node on the system since the CLI shim uses Node.)
+
 ## Configuration
 
 Before using the CLI, you need to configure your BookStack credentials:
