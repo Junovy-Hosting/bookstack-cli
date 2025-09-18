@@ -1,132 +1,61 @@
-# API Reference
+# CLI Reference (Quick Guide)
 
-This document provides comprehensive details about the BookStack CLI commands and options.
+Use `bookstack help` to see this summary in your terminal.
 
-## Authentication
+## Auth & Config
+- Flags: `--url`, `--token-id`, `--token-secret`
+- Env: `BOOKSTACK_URL`, `BOOKSTACK_TOKEN_ID`, `BOOKSTACK_TOKEN_SECRET` (via .env/.env.local)
+- Files (auto-detected):
+  - `bookstack-config.json`
+  - `bookstack.config.(json|yaml|yml|toml)`
+  - `.bookstackrc[.(json|yaml|yml|toml)]`
+  - `package.json` field `bookstack`
 
-The BookStack CLI uses token-based authentication through the BookStack API.
-
-### Required Credentials
-- **Token ID**: Your BookStack API token identifier
-- **Token Secret**: Your BookStack API token secret
-
-### Configuration Methods
-1. **Config file** (recommended): `./bookstack-config.json`
-2. **Environment variables**: Set via command line options
-3. **Command line flags**: Pass directly with each command
-
-## Commands Reference
-
-### `import` - Import Content
-
-Import files or directories into BookStack.
-
-**Syntax:**
+## Import
 ```bash
-bookstack-cli import <source> [options]
+bookstack import <source> [--book <name|id>] [--format markdown|html|json]
+                 [--max-depth <n>] [--chapter-from dir|readme] [--flatten]
+                 [--dry-run]
 ```
 
-**Options:**
-- `-b, --book <name>` - Target book name or ID
-- `-f, --format <format>` - Source format (markdown, html, json)
-- `--dry-run` - Preview import without making changes
-
-**Examples:**
+## Listing
 ```bash
-# Import single file
-bookstack-cli import README.md --book "Documentation"
-
-# Import directory
-bookstack-cli import ./docs --book "User Guide"
-
-# Dry run to preview
-bookstack-cli import ./content --book "Manual" --dry-run
+bookstack books list [--json]
+bookstack chapters list --book <id|name|slug> [--json]
+bookstack pages list [--book <id|name|slug>] [--json]
+bookstack shelves list [--json]
 ```
 
-### `list` - List Resources
-
-List BookStack books, chapters, or pages.
-
-**Syntax:**
+## Books
 ```bash
-bookstack-cli list <resource> [options]
+bookstack book show <id|name|slug> [--json] [--plain]
+bookstack book tree <id|name|slug> [--ids] [--type page|chapter] [--json] [--plain]
+bookstack book export <id|name|slug> --format markdown|html|plaintext|pdf [--out <file>] [--stdout]
+bookstack book export-contents <id|name|slug> --format markdown|html|plaintext [--dir <path>] [--dry-run]
 ```
 
-**Resources:**
-- `books` - List all books
-- `chapters` - List chapters (requires --book)
-- `pages` - List pages (optional --book filter)
-
-**Options:**
-- `--book <id>` - Book ID to filter by
-
-**Examples:**
+## Chapters & Pages
 ```bash
-# List all books
-bookstack-cli list books
+bookstack chapter show <id|name|slug> [--json] [--plain]
+bookstack chapter export <id|name|slug> --format markdown|html|plaintext|pdf [--out <file>] [--stdout]
 
-# List chapters in book ID 1
-bookstack-cli list chapters --book 1
-
-# List all pages
-bookstack-cli list pages
+bookstack page show <id|name|slug> [--json]
+bookstack page export <id|name|slug> --format markdown|html|plaintext|pdf [--out <file>] [--stdout]
 ```
 
-### `config` - Manage Configuration
-
-Initialize or display configuration.
-
-**Syntax:**
+## Shelves
 ```bash
-bookstack-cli config <action>
+bookstack shelves show <id|name|slug>
 ```
 
-**Actions:**
-- `init` - Create initial config file
-- `show` - Display current configuration
+## Search & Find
+```bash
+bookstack search "query" [filters] [--json] [--limit <n>]
+bookstack find "query" --type page,chapter,book [--limit <n>]
+```
+Filters: `--type`, `--in-name`, `--in-body`, `--created-after/before`, `--updated-after/before`,
+`--created-by`, `--updated-by`, `--owned-by`, `--is-restricted`, `--is-template`,
+`--viewed-by-me`, `--not-viewed-by-me`, `--tag`, `--tag-kv`, `--sort-by`.
 
 ## Global Options
-
-These options can be used with any command:
-
-- `-u, --url <url>` - BookStack base URL
-- `-i, --token-id <id>` - BookStack API token ID
-- `-s, --token-secret <secret>` - BookStack API token secret
-- `-c, --config <path>` - Config file path
-- `-h, --help` - Display help
-- `-V, --version` - Show version
-
-## Supported File Formats
-
-The CLI can import the following file types:
-
-- **Markdown**: `.md`, `.markdown`
-- **HTML**: `.html`, `.htm`
-- **Plain Text**: `.txt`
-
-## Error Handling
-
-The CLI provides detailed error messages for common issues:
-
-- Invalid BookStack credentials
-- Network connectivity problems
-- File not found errors
-- Permission denied issues
-
-## Advanced Usage
-
-### Batch Imports
-
-Import multiple directories:
-```bash
-for dir in docs-*; do
-  bookstack-cli import "$dir" --book "$dir"
-done
-```
-
-### Configuration Override
-
-Use different config per command:
-```bash
-bookstack-cli --config ./prod-config.json import docs/ --book "Production Docs"
-```
+`--no-color`, `-q, --quiet`, `--config`, `--url`, `--token-id`, `--token-secret`

@@ -1,29 +1,66 @@
 {
-  "name": "bookstack-import-bot",
-  "version": "1.0.0",
-  "description": "An Automated CLI for importing content into BookStack",
+  "name": "@junovy/bookcase-cli",
+  "version": "0.1.0",
+  "description": "A CLI for viewing, searching, importing, and exporting BookStack content.",
   "main": "dist/bookstack-cli.js",
   "bin": {
-    "bookstack-cli": "dist/bookstack-cli.js"
+    "bookstack": "bin/bookstack",
+    "bookstack-cli": "bin/bookstack"
   },
   "scripts": {
     "build": "tsc",
-    "start": "node dist/bookstack-cli.js",
-    "dev": "ts-node src/bookstack-cli.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "typecheck": "tsc --noEmit",
+    "start": "bun dist/bookstack-cli.js",
+    "dev": "bun src/bookstack-cli.ts",
+    "prepack": "bun run build",
+    "prepare": "bun run build",
+    "test": "bun test"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "bookstack",
+    "cli",
+    "documentation",
+    "import",
+    "export",
+    "search"
+  ],
+  "author": "Bobby Drake <iam@bobbydrake.nl>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Junovy-Hosting/bookstack-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Junovy-Hosting/bookstack-cli/issues"
+  },
+  "homepage": "https://github.com/Junovy-Hosting/bookstack-cli#readme",
+  "files": [
+    "dist/**",
+    "bin/**",
+    "src/**",
+    "README.md",
+    "LICENSE",
+    "examples/**"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "axios": "^1.12.2",
     "commander": "^14.0.1",
-    "fs-extra": "^11.3.2"
+    "picocolors": "^1.0.1",
+    "dotenv": "^16.4.5",
+    "fs-extra": "^11.3.2",
+    "toml": "^3.0.0",
+    "yaml": "^2.5.0"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^24.5.2",
-    "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
-  }
+  },
+  "engines": {
+    "bun": ">=1.2.0"
+  },
+  "packageManager": "bun@1.2.0"
 }

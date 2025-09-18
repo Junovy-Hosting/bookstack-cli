@@ -18,13 +18,13 @@ Before using the CLI, ensure you have:
 1. A running BookStack instance
 2. API access enabled in BookStack
 3. Valid API token credentials (Token ID and Secret)
-4. Node.js installed on your system
+4. Bun 1.2+ installed on your system
 
 ## Quick Start
 
 1. **Configure your BookStack connection:**
    ```bash
-   npm run dev -- config init
+   bun run dev -- config init
    ```
 
 2. **Edit the configuration file** with your BookStack details:
@@ -38,12 +38,12 @@ Before using the CLI, ensure you have:
 
 3. **Test the connection:**
    ```bash
-   npm run dev -- list books
+   bun run dev -- list books
    ```
 
 4. **Import your first document:**
    ```bash
-   npm run dev -- import my-doc.md --book "Documentation"
+   bun run dev -- import my-doc.md --book "Documentation"
    ```
 
 ## Next Steps
