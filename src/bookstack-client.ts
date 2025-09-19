@@ -59,6 +59,16 @@ export interface SearchResult {
   chapter_id?: number;
 }
 
+export interface ImageItem {
+  id: number;
+  name: string;
+  url?: string;
+  type?: string;
+  created_at?: string;
+  updated_at?: string;
+  uploaded_to?: number;
+}
+
 export class BookStackClient {
   private client: AxiosInstance;
   private config: BookStackConfig;
@@ -289,5 +299,34 @@ export class BookStackClient {
       book_id: r.book_id,
       chapter_id: r.chapter_id,
     }));
+  }
+
+  // Images (Image Gallery)
+  async getImages(): Promise<ImageItem[]> {
+    const res = await this.client.get('/image-gallery');
+    const arr = (res.data?.data || res.data || []) as any[];
+    return arr.map((r) => ({
+      id: r.id,
+      name: r.name,
+      url: r.url,
+      type: r.type,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+      uploaded_to: r.uploaded_to,
+    }));
+  }
+
+  async getImage(id: number): Promise<ImageItem> {
+    const res = await this.client.get(`/image-gallery/${id}`);
+    const r = res.data;
+    return {
+      id: r.id,
+      name: r.name,
+      url: r.url,
+      type: r.type,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+      uploaded_to: r.uploaded_to,
+    };
   }
 }

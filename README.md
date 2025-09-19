@@ -438,23 +438,23 @@ Available filters (mapped to BookStack search syntax):
 
 List shelves:
 
-````bash
-bookstack shelves list
-
-Show shelf with books:
 ```bash
+bookstack shelves list
 bookstack shelves show <id|name|slug>
-````
-
 ```
 
-Show shelf and its books:
+### Images
 
+List images in the image gallery:
+```bash
+bookstack images list
 ```
 
-bookstack shelves show <id|name|slug>
-
-````
+Read a specific image:
+```bash
+bookstack images read <id>
+```
+Use `--json` for machine-readable output. The printed URL is clickable in most terminals.
 
 ### Chapter/Page Export
 

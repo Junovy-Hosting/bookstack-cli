@@ -766,6 +766,62 @@ shelvesCmd
     }
   });
 
+// Images commands
+const imagesCmd = program.command("images").description("Manage images (image gallery)");
+
+imagesCmd
+  .command("list")
+  .description("List images in the image gallery")
+  .option("--json", "Output JSON")
+  .action(async (opts: any) => {
+    try {
+      const globalOpts = program.opts();
+      configureUi({ color: !globalOpts.noColor, quiet: !!globalOpts.quiet || !!opts.json });
+      const config = await resolveConfig({
+        explicitPath: globalOpts.config,
+        cli: { url: globalOpts.url, tokenId: globalOpts.tokenId, tokenSecret: globalOpts.tokenSecret },
+      });
+      const client = new BookStackClient({ baseUrl: config.url || '', tokenId: config.tokenId || '', tokenSecret: config.tokenSecret || '' });
+      const spin = createSpinner('Fetching images…').start();
+      const items = await client.getImages();
+      spin.succeed(`Fetched ${items.length} images`);
+      if (opts.json) { console.log(JSON.stringify(items, null, 2)); return; }
+      if (!items.length) { console.log(c.dim('No images.')); return; }
+      console.log(c.bold('Images:'));
+      items.forEach(it => {
+        const url = it.url ? `${it.url}` : '';
+        const line = `  ${c.yellow('#'+it.id)} ${c.green(it.name)} ${it.type ? c.gray('('+it.type+')') : ''}${url ? ' ' + c.cyan(url) : ''}`;
+        console.log(line);
+      });
+    } catch (error) { handleAxiosError(error); }
+  });
+
+imagesCmd
+  .command('read')
+  .description('Show details for a specific image')
+  .argument('<id>', 'Image ID')
+  .option('--json', 'Output JSON')
+  .action(async (id: string, opts: any) => {
+    try {
+      const globalOpts = program.opts();
+      configureUi({ color: !globalOpts.noColor, quiet: !!globalOpts.quiet || !!opts.json });
+      const config = await resolveConfig({
+        explicitPath: globalOpts.config,
+        cli: { url: globalOpts.url, tokenId: globalOpts.tokenId, tokenSecret: globalOpts.tokenSecret },
+      });
+      const client = new BookStackClient({ baseUrl: config.url || '', tokenId: config.tokenId || '', tokenSecret: config.tokenSecret || '' });
+      const spin = createSpinner('Fetching image…').start();
+      const img = await client.getImage(parseInt(id, 10));
+      spin.succeed('Fetched image');
+      if (opts.json) { console.log(JSON.stringify(img, null, 2)); return; }
+      console.log(`${c.bold(img.name)} ${c.dim('#'+img.id)} ${img.type ? c.gray('('+img.type+')') : ''}`);
+      if (img.url) console.log(`  ${c.cyan(img.url)}`);
+      if (img.created_at) console.log(`  Created: ${img.created_at}`);
+      if (img.updated_at) console.log(`  Updated: ${img.updated_at}`);
+      if (typeof img.uploaded_to !== 'undefined') console.log(`  Uploaded To: ${img.uploaded_to}`);
+    } catch (error) { handleAxiosError(error); }
+  });
+
 // Books commands
 const booksCmd = program.command("books").description("Manage books");
 
