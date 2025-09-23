@@ -21,40 +21,41 @@ async function loadProgram() {
   return mod.program as import('../src/bookstack-cli').program;
 }
 
-const ENV_KEYS = ['BOOKSTACK_URL', 'BOOKSTACK_TOKEN_ID', 'BOOKSTACK_TOKEN_SECRET'] as const;
+function cliArgs(...args: string[]) {
+  return ['node', 'bookstack', ...args];
+}
 
-const envSnapshot: Record<(typeof ENV_KEYS)[number], string | undefined> = {
-  BOOKSTACK_URL: undefined,
-  BOOKSTACK_TOKEN_ID: undefined,
-  BOOKSTACK_TOKEN_SECRET: undefined,
-};
+function stubConfig(overrides: Partial<{ url: string; tokenId: string; tokenSecret: string }> = {}) {
+  const calls: any[] = [];
+  const resolved = {
+    url: 'https://mock',
+    tokenId: 'id',
+    tokenSecret: 'secret',
+    ...overrides,
+  };
+  mock.module(new URL('../src/config.ts', import.meta.url).href, () => ({
+    resolveConfig: async (opts: any) => {
+      calls.push(opts);
+      return resolved;
+    },
+    redact: (config: any) => config,
+  }));
+  return { calls, resolved };
+}
 
 beforeEach(() => {
-  for (const key of ENV_KEYS) {
-    envSnapshot[key] = process.env[key];
-  }
-  process.env.BOOKSTACK_URL = 'https://mock';
-  process.env.BOOKSTACK_TOKEN_ID = 'id';
-  process.env.BOOKSTACK_TOKEN_SECRET = 'secret';
   mock.restore();
 });
 
 afterEach(() => {
   mock.restore();
-  for (const key of ENV_KEYS) {
-    const value = envSnapshot[key];
-    if (value === undefined) {
-      delete process.env[key];
-    } else {
-      process.env[key] = value;
-    }
-  }
 });
 
 describe('Import command', () => {
   it('delegates to ImportCommand with provided options', async () => {
     const importCalls: Array<{ source: string; opts: any; client: any }> = [];
     const constructedConfigs: any[] = [];
+    const config = stubConfig();
 
     mock.module(new URL('../src/bookstack-client.ts', import.meta.url).href, () => ({
       BookStackClient: class {
@@ -79,17 +80,17 @@ describe('Import command', () => {
 
     const program = await loadProgram();
     const output = await withCapturedStdout(async () => {
-      await program.parseAsync([
-        'node',
-        'bookstack',
-        'import',
-        './docs',
-        '-b',
-        'Docs',
-        '--format',
-        'html',
-        '--dry-run',
-      ]);
+      await program.parseAsync(
+        cliArgs(
+          'import',
+          './docs',
+          '-b',
+          'Docs',
+          '--format',
+          'html',
+          '--dry-run'
+        )
+      );
     });
 
     expect(importCalls.length).toBe(1);
@@ -99,11 +100,12 @@ describe('Import command', () => {
     expect(importCalls[0].opts.dryRun).toBe(true);
     expect(constructedConfigs.length).toBe(1);
     expect(constructedConfigs[0]).toEqual({
-      baseUrl: 'https://mock',
-      tokenId: 'id',
-      tokenSecret: 'secret',
+      baseUrl: config.resolved.url,
+      tokenId: config.resolved.tokenId,
+      tokenSecret: config.resolved.tokenSecret,
     });
     expect(output).toContain('Import stub executed for ./docs');
+    expect(config.calls.length).toBeGreaterThan(0);
   });
 });
 
@@ -111,6 +113,7 @@ describe('Book export command', () => {
   it('writes exported book text to the default file path', async () => {
     const writes: Array<{ path: string; data: any; encoding?: string }> = [];
     const exportCalls: Array<{ id: number; format: string }> = [];
+    const config = stubConfig();
 
     mock.module('fs-extra', () => ({
       writeFile: async (path: string, data: any, encoding?: string) => {
@@ -137,15 +140,9 @@ describe('Book export command', () => {
 
     const program = await loadProgram();
     const output = await withCapturedStdout(async () => {
-      await program.parseAsync([
-        'node',
-        'bookstack',
-        'book',
-        'export',
-        'Docs',
-        '--format',
-        'markdown',
-      ]);
+      await program.parseAsync(
+        cliArgs('book', 'export', 'Docs', '--format', 'markdown')
+      );
     });
 
     expect(exportCalls).toEqual([{ id: 21, format: 'markdown' }]);
@@ -153,11 +150,13 @@ describe('Book export command', () => {
       { path: 'docs.md', data: 'Exported markdown for 21', encoding: 'utf8' },
     ]);
     expect(output).toContain('Saved markdown export to docs.md');
+    expect(config.calls.length).toBeGreaterThan(0);
   });
 
   it('writes PDF exports to the provided output path', async () => {
     const writes: Array<{ path: string; data: any; encoding?: string }> = [];
     const pdfCalls: Array<{ id: number }> = [];
+    const config = stubConfig();
 
     mock.module('fs-extra', () => ({
       writeFile: async (path: string, data: any, encoding?: string) => {
@@ -183,17 +182,17 @@ describe('Book export command', () => {
 
     const program = await loadProgram();
     const output = await withCapturedStdout(async () => {
-      await program.parseAsync([
-        'node',
-        'bookstack',
-        'book',
-        'export',
-        '42',
-        '--format',
-        'pdf',
-        '--out',
-        './exports/out.pdf',
-      ]);
+      await program.parseAsync(
+        cliArgs(
+          'book',
+          'export',
+          '42',
+          '--format',
+          'pdf',
+          '--out',
+          './exports/out.pdf'
+        )
+      );
     });
 
     expect(pdfCalls).toEqual([{ id: 42 }]);
@@ -201,5 +200,6 @@ describe('Book export command', () => {
       { path: './exports/out.pdf', data: bytes, encoding: undefined },
     ]);
     expect(output).toContain('Saved PDF export to ./exports/out.pdf');
+    expect(config.calls.length).toBeGreaterThan(0);
   });
 });
