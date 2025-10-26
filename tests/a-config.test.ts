@@ -1,27 +1,33 @@
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
-import { resolveConfig } from "../src/config";
 
 const CWD = process.cwd();
 let tmpdir: string;
 
 beforeEach(async () => {
+  mock.restore();
   delete process.env.BOOKSTACK_URL;
   delete process.env.BOOKSTACK_TOKEN_ID;
   delete process.env.BOOKSTACK_TOKEN_SECRET;
-  tmpdir = await fs.mkdtemp(path.join(os.tmpdir(), "bookstack-cli-test-"));
+  tmpdir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "bookstack-cli-test-"));
   process.chdir(tmpdir);
 });
 
 afterEach(async () => {
   process.chdir(CWD);
-  await fs.remove(tmpdir);
+  await fs.promises.rm(tmpdir, { recursive: true, force: true });
   delete process.env.BOOKSTACK_URL;
   delete process.env.BOOKSTACK_TOKEN_ID;
   delete process.env.BOOKSTACK_TOKEN_SECRET;
+  mock.restore();
 });
+
+async function loadConfig() {
+  const mod = await import(new URL('../src/config.ts', import.meta.url).href + '?t=' + Date.now());
+  return mod.resolveConfig;
+}
 
 describe("resolveConfig priority (CLI > env > file)", () => {
   it("uses file when no env/cli provided", async () => {
@@ -30,6 +36,7 @@ describe("resolveConfig priority (CLI > env > file)", () => {
       tokenId: "file_id",
       tokenSecret: "file_secret",
     });
+    const resolveConfig = await loadConfig();
     const conf = await resolveConfig({});
     expect(conf.url).toBe("https://file.example");
     expect(conf.tokenId).toBe("file_id");
@@ -45,6 +52,7 @@ describe("resolveConfig priority (CLI > env > file)", () => {
     process.env.BOOKSTACK_URL = "https://env.example";
     process.env.BOOKSTACK_TOKEN_ID = "env_id";
     process.env.BOOKSTACK_TOKEN_SECRET = "env_secret";
+    const resolveConfig = await loadConfig();
     const conf = await resolveConfig({});
     expect(conf.url).toBe("https://env.example");
     expect(conf.tokenId).toBe("env_id");
@@ -54,6 +62,7 @@ describe("resolveConfig priority (CLI > env > file)", () => {
   it("CLI overrides env and file", async () => {
     await fs.writeJSON("bookstack-config.json", { url: "https://file.example" });
     process.env.BOOKSTACK_URL = "https://env.example";
+    const resolveConfig = await loadConfig();
     const conf = await resolveConfig({ cli: { url: "https://cli.example" } });
     expect(conf.url).toBe("https://cli.example");
   });
@@ -69,6 +78,7 @@ describe("resolveConfig supports .env and YAML/TOML", () => {
         "BOOKSTACK_TOKEN_SECRET=dot_secret",
       ].join("\n")
     );
+    const resolveConfig = await loadConfig();
     const conf = await resolveConfig({});
     expect(conf.url).toBe("https://dotenv.example");
     expect(conf.tokenId).toBe("dot_id");
@@ -84,6 +94,7 @@ describe("resolveConfig supports .env and YAML/TOML", () => {
         "tokenSecret: y_secret",
       ].join("\n")
     );
+    const resolveConfig = await loadConfig();
     const conf = await resolveConfig({});
     expect(conf.url).toBe("https://yaml.example");
     expect(conf.tokenId).toBe("y_id");
