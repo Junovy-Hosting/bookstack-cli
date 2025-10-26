@@ -1,4 +1,5 @@
-import * as fs from 'fs-extra';
+import * as fsp from 'node:fs/promises';
+import * as fs from 'node:fs';
 import * as path from 'path';
 import dotenv from 'dotenv';
 import YAML from 'yaml';
@@ -41,7 +42,7 @@ function normalize(obj: RawConfig | undefined | null): ResolvedConfig {
 async function readConfigFile(filePath: string): Promise<ResolvedConfig> {
   const ext = path.extname(filePath).toLowerCase();
   const base = path.basename(filePath).toLowerCase();
-  const content = await fs.readFile(filePath, 'utf8');
+  const content = await fsp.readFile(filePath, 'utf8');
 
   if (base === 'package.json') {
     const pkg = JSON.parse(content);
@@ -69,7 +70,7 @@ async function findFileConfig(explicitPath?: string): Promise<ResolvedConfig> {
 
   for (const rel of candidates) {
     const p = path.isAbsolute(rel) ? rel : path.join(cwd, rel);
-    if (await fs.pathExists(p)) {
+    if (await pathExists(p)) {
       try {
         const conf = await readConfigFile(p);
         return { ...conf, source: p };
@@ -81,15 +82,52 @@ async function findFileConfig(explicitPath?: string): Promise<ResolvedConfig> {
   return {};
 }
 
+async function pathExists(p: string): Promise<boolean> {
+  try {
+    await fsp.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function fromEnv(): ResolvedConfig {
+  const cwd = process.cwd();
   // Load .env and .env.local if present (later loads override earlier)
-  dotenv.config({ path: path.join(process.cwd(), '.env') });
-  dotenv.config({ path: path.join(process.cwd(), '.env.local'), override: true });
+  dotenv.config({ path: path.join(cwd, '.env') });
+  dotenv.config({ path: path.join(cwd, '.env.local'), override: true });
+
+  // Fallback: parse files directly in case another test suite or loader interfered
+  let parsedEnv: Record<string, string> = {};
+  try {
+    const p = path.join(cwd, '.env');
+    if (fs.existsSync(p)) {
+      parsedEnv = { ...parsedEnv, ...dotenv.parse(fs.readFileSync(p, 'utf8')) };
+    }
+  } catch {}
+  try {
+    const p = path.join(cwd, '.env.local');
+    if (fs.existsSync(p)) {
+      parsedEnv = { ...parsedEnv, ...dotenv.parse(fs.readFileSync(p, 'utf8')) };
+    }
+  } catch {}
 
   const env = process.env;
-  const url = env.BOOKSTACK_URL || env.BOOKSTACK_BASE_URL || env.BOOKSTACK_HOST;
-  const tokenId = env.BOOKSTACK_TOKEN_ID || env.BOOKSTACK_ID;
-  const tokenSecret = env.BOOKSTACK_TOKEN_SECRET || env.BOOKSTACK_SECRET;
+  const pick = (keys: string[]): string | undefined => {
+    for (const k of keys) {
+      const v = env[k];
+      if (v != null && v !== '') return v;
+    }
+    for (const k of keys) {
+      const v = parsedEnv[k];
+      if (v != null && v !== '') return v;
+    }
+    return undefined;
+  };
+
+  const url = pick(['BOOKSTACK_URL', 'BOOKSTACK_BASE_URL', 'BOOKSTACK_HOST']);
+  const tokenId = pick(['BOOKSTACK_TOKEN_ID', 'BOOKSTACK_ID']);
+  const tokenSecret = pick(['BOOKSTACK_TOKEN_SECRET', 'BOOKSTACK_SECRET']);
   return { url, tokenId, tokenSecret, source: 'env' };
 }
 
