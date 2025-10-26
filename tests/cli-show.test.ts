@@ -74,9 +74,8 @@ describe('Single-resource commands', () => {
   it('book show <name> --json outputs structured JSON', async () => {
     // Prevent quiet mode from silencing console.log when --json is used
     mock.module(new URL('../src/ui.ts', import.meta.url).href, () => ({
-      configureUi: () => {},
-      c: new Proxy({}, { get: () => (s: any) => String(s) }),
-      createSpinner: () => ({ start() { return this; }, succeed() { return this; }, fail() { return this; }, stop() {} }),
+      ...require('../src/ui'),
+      configureUi: () => {}, // Disable quiet mode
     }));
     mockClient();
     const program = await loadProgram();
@@ -104,9 +103,8 @@ describe('Single-resource commands', () => {
 
   it('chapter show <id> --json outputs structured JSON', async () => {
     mock.module(new URL('../src/ui.ts', import.meta.url).href, () => ({
-      configureUi: () => {},
-      c: new Proxy({}, { get: () => (s: any) => String(s) }),
-      createSpinner: () => ({ start() { return this; }, succeed() { return this; }, fail() { return this; }, stop() {} }),
+      ...require('../src/ui'),
+      configureUi: () => {}, // Disable quiet mode
     }));
     mockClient();
     const program = await loadProgram();
@@ -134,9 +132,8 @@ describe('Single-resource commands', () => {
 
   it('page show <id> --json outputs structured JSON', async () => {
     mock.module(new URL('../src/ui.ts', import.meta.url).href, () => ({
-      configureUi: () => {},
-      c: new Proxy({}, { get: () => (s: any) => String(s) }),
-      createSpinner: () => ({ start() { return this; }, succeed() { return this; }, fail() { return this; }, stop() {} }),
+      ...require('../src/ui'),
+      configureUi: () => {}, // Disable quiet mode
     }));
     mockClient();
     const program = await loadProgram();
@@ -176,9 +173,8 @@ describe('Single-resource commands', () => {
     mock.restore();
     mockClient();
     mock.module(new URL('../src/ui.ts', import.meta.url).href, () => ({
-      configureUi: () => {},
-      c: new Proxy({}, { get: () => (s: any) => String(s) }),
-      createSpinner: () => ({ start() { return this; }, succeed() { return this; }, fail() { return this; }, stop() {} }),
+      ...require('../src/ui'),
+      configureUi: () => {}, // Disable quiet mode
     }));
     program = await loadProgram();
     const jsonOut = await withCapturedStdout(async () => {
