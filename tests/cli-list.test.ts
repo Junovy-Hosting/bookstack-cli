@@ -103,10 +103,8 @@ describe('CLI list commands', () => {
     // For --json, the CLI sets quiet which normally silences console.log.
     // Override UI for this test so --json does not mute console.log.
     mock.module(new URL('../src/ui.ts', import.meta.url).href, () => ({
-      configureUi: () => {},
-      c: new Proxy({}, { get: () => (s: any) => String(s) }),
-      createSpinner: () => ({ start() { return this; }, succeed() { return this; }, fail() { return this; }, stop() {} }),
-      createProgressBar: () => ({ tick() {}, update() {}, stop() {} }),
+      ...require('../src/ui'),
+      configureUi: () => {}, // Disable quiet mode
     }));
     mockClient();
     const program = await loadProgram();

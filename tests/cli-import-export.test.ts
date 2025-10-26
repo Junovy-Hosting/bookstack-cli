@@ -39,8 +39,9 @@ describe('Import command', () => {
       redact: (cfg: any) => cfg,
     }));
 
+    // Mock only configureUi to disable quiet mode for tests
     mock.module(new URL('../src/ui.ts', import.meta.url).href, () => ({
-      configureUi: () => {},
+      configureUi: () => {}, // Disable quiet mode
       c: new Proxy({}, { get: () => (s: any) => String(s) }),
       createSpinner: () => ({
         start() { return this; },
@@ -51,14 +52,6 @@ describe('Import command', () => {
       createProgressBar: () => ({ tick() {}, update() {}, stop() {} }),
       formatBytes: (n: number) => `${n} bytes`,
       formatDuration: (ms: number) => `${ms} ms`,
-    }));
-
-    mock.module(new URL('../src/bookstack-client.ts', import.meta.url).href, () => ({
-      BookStackClient: class {
-        constructor(cfg: any) {
-          constructedConfigs.push(cfg);
-        }
-      },
     }));
 
     mock.module(new URL('../src/commands/import.ts', import.meta.url).href, () => ({
@@ -114,17 +107,10 @@ describe('Book export command', () => {
       redact: (cfg: any) => cfg,
     }));
 
-    mock.module(new URL('../src/ui.ts', import.meta.url).href, () => ({
-      configureUi: () => {},
-      c: new Proxy({}, { get: () => (s: any) => String(s) }),
-      createSpinner: () => ({
-        start() { return this; },
-        succeed() { return this; },
-        fail() { return this; },
-        stop() {},
-      }),
-      formatBytes: (n: number) => `${n} bytes`,
-      formatDuration: (ms: number) => `${ms} ms`,
+    // Mock only configureUi to disable quiet mode for tests
+    mock.module(new URL("../src/ui.ts", import.meta.url).href, () => ({
+      ...require('../src/ui'),
+      configureUi: () => {}, // Disable quiet mode
     }));
 
     mock.module('fs-extra', () => ({
@@ -179,17 +165,10 @@ describe('Book export command', () => {
       redact: (cfg: any) => cfg,
     }));
 
-    mock.module(new URL('../src/ui.ts', import.meta.url).href, () => ({
-      configureUi: () => {},
-      c: new Proxy({}, { get: () => (s: any) => String(s) }),
-      createSpinner: () => ({
-        start() { return this; },
-        succeed() { return this; },
-        fail() { return this; },
-        stop() {},
-      }),
-      formatBytes: (n: number) => `${n} bytes`,
-      formatDuration: (ms: number) => `${ms} ms`,
+    // Mock only configureUi to disable quiet mode for tests
+    mock.module(new URL("../src/ui.ts", import.meta.url).href, () => ({
+      ...require('../src/ui'),
+      configureUi: () => {}, // Disable quiet mode
     }));
 
     mock.module('fs-extra', () => ({
