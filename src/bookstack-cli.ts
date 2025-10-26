@@ -35,6 +35,15 @@ program
   )
   .version(readVersion());
 
+// Global options (consumed by subcommands via program.opts())
+program
+  .option('-u, --url <url>', 'BookStack base URL')
+  .option('-i, --token-id <id>', 'BookStack API token ID')
+  .option('-s, --token-secret <secret>', 'BookStack API token secret')
+  .option('-c, --config <path>', 'Config file path (auto-detected if omitted)')
+  .option('-q, --quiet', 'Suppress non-essential output')
+  .option('--no-color', 'Disable ANSI colors');
+
 // 'help' manpage
 program
   .command("help")
