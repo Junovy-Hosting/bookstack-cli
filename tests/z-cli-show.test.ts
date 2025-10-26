@@ -73,10 +73,13 @@ describe('Single-resource commands', () => {
 
   it('book show <name> --json outputs structured JSON', async () => {
     // Prevent quiet mode from silencing console.log when --json is used
+    const { formatBytes, formatDuration } = await import('../src/ui');
     mock.module(new URL('../src/ui.ts', import.meta.url).href, () => ({
       configureUi: () => {},
       c: new Proxy({}, { get: () => (s: any) => String(s) }),
       createSpinner: () => ({ start() { return this; }, succeed() { return this; }, fail() { return this; }, stop() {} }),
+      formatBytes,
+      formatDuration,
     }));
     mockClient();
     const program = await loadProgram();
@@ -103,10 +106,13 @@ describe('Single-resource commands', () => {
   });
 
   it('chapter show <id> --json outputs structured JSON', async () => {
+    const { formatBytes, formatDuration } = await import('../src/ui');
     mock.module(new URL('../src/ui.ts', import.meta.url).href, () => ({
       configureUi: () => {},
       c: new Proxy({}, { get: () => (s: any) => String(s) }),
       createSpinner: () => ({ start() { return this; }, succeed() { return this; }, fail() { return this; }, stop() {} }),
+      formatBytes,
+      formatDuration,
     }));
     mockClient();
     const program = await loadProgram();
@@ -133,10 +139,13 @@ describe('Single-resource commands', () => {
   });
 
   it('page show <id> --json outputs structured JSON', async () => {
+    const { formatBytes, formatDuration } = await import('../src/ui');
     mock.module(new URL('../src/ui.ts', import.meta.url).href, () => ({
       configureUi: () => {},
       c: new Proxy({}, { get: () => (s: any) => String(s) }),
       createSpinner: () => ({ start() { return this; }, succeed() { return this; }, fail() { return this; }, stop() {} }),
+      formatBytes,
+      formatDuration,
     }));
     mockClient();
     const program = await loadProgram();
@@ -175,10 +184,13 @@ describe('Single-resource commands', () => {
     // JSON
     mock.restore();
     mockClient();
+    const { formatBytes: jsonFormatBytes, formatDuration: jsonFormatDuration } = await import('../src/ui');
     mock.module(new URL('../src/ui.ts', import.meta.url).href, () => ({
       configureUi: () => {},
       c: new Proxy({}, { get: () => (s: any) => String(s) }),
       createSpinner: () => ({ start() { return this; }, succeed() { return this; }, fail() { return this; }, stop() {} }),
+      formatBytes: jsonFormatBytes,
+      formatDuration: jsonFormatDuration,
     }));
     program = await loadProgram();
     const jsonOut = await withCapturedStdout(async () => {
