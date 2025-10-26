@@ -39,19 +39,23 @@ describe('Import command', () => {
       redact: (cfg: any) => cfg,
     }));
 
-    mock.module(new URL('../src/ui.ts', import.meta.url).href, () => ({
-      configureUi: () => {},
-      c: new Proxy({}, { get: () => (s: any) => String(s) }),
-      createSpinner: () => ({
-        start() { return this; },
-        succeed() { return this; },
-        fail() { return this; },
-        stop() {},
-      }),
-      createProgressBar: () => ({ tick() {}, update() {}, stop() {} }),
-      formatBytes: (n: number) => `${n} bytes`,
-      formatDuration: (ms: number) => `${ms} ms`,
-    }));
+    mock.module(new URL('../src/ui.ts', import.meta.url).href, () => {
+      // Pass through real formatters to avoid cross-test interference
+      const real = require(new URL('../dist/ui.js', import.meta.url).pathname);
+      return {
+        configureUi: () => {},
+        c: new Proxy({}, { get: () => (s: any) => String(s) }),
+        createSpinner: () => ({
+          start() { return this; },
+          succeed() { return this; },
+          fail() { return this; },
+          stop() {},
+        }),
+        createProgressBar: () => ({ tick() {}, update() {}, stop() {} }),
+        formatBytes: real.formatBytes,
+        formatDuration: real.formatDuration,
+      };
+    });
 
     mock.module(new URL('../src/bookstack-client.ts', import.meta.url).href, () => ({
       BookStackClient: class {
@@ -132,6 +136,29 @@ describe('Book export command', () => {
         writes.push({ path, data, encoding });
       },
       ensureDir: async () => {},
+      pathExists: async (p: string) => {
+        try {
+          const fsp = await import('node:fs/promises');
+          await fsp.access(p);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      readFile: async (p: string, enc?: any) => {
+        const fsp = await import('node:fs/promises');
+        return await fsp.readFile(p, enc);
+      },
+      writeJSON: async (p: string, obj: any, opts?: any) => {
+        const fsp = await import('node:fs/promises');
+        const spaces = opts?.spaces ?? 0;
+        await fsp.writeFile(p, JSON.stringify(obj, null, spaces), 'utf8');
+      },
+      writeJson: async (p: string, obj: any, opts?: any) => {
+        const fsp = await import('node:fs/promises');
+        const spaces = opts?.spaces ?? 0;
+        await fsp.writeFile(p, JSON.stringify(obj, null, spaces), 'utf8');
+      },
     }));
 
     mock.module(new URL('../src/bookstack-client.ts', import.meta.url).href, () => ({
@@ -179,24 +206,50 @@ describe('Book export command', () => {
       redact: (cfg: any) => cfg,
     }));
 
-    mock.module(new URL('../src/ui.ts', import.meta.url).href, () => ({
-      configureUi: () => {},
-      c: new Proxy({}, { get: () => (s: any) => String(s) }),
-      createSpinner: () => ({
-        start() { return this; },
-        succeed() { return this; },
-        fail() { return this; },
-        stop() {},
-      }),
-      formatBytes: (n: number) => `${n} bytes`,
-      formatDuration: (ms: number) => `${ms} ms`,
-    }));
+    mock.module(new URL('../src/ui.ts', import.meta.url).href, () => {
+      const real = require(new URL('../dist/ui.js', import.meta.url).pathname);
+      return {
+        configureUi: () => {},
+        c: new Proxy({}, { get: () => (s: any) => String(s) }),
+        createSpinner: () => ({
+          start() { return this; },
+          succeed() { return this; },
+          fail() { return this; },
+          stop() {},
+        }),
+        formatBytes: real.formatBytes,
+        formatDuration: real.formatDuration,
+      };
+    });
 
     mock.module('fs-extra', () => ({
       writeFile: async (path: string, data: any, encoding?: string) => {
         writes.push({ path, data, encoding });
       },
       ensureDir: async () => {},
+      pathExists: async (p: string) => {
+        try {
+          const fsp = await import('node:fs/promises');
+          await fsp.access(p);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      readFile: async (p: string, enc?: any) => {
+        const fsp = await import('node:fs/promises');
+        return await fsp.readFile(p, enc);
+      },
+      writeJSON: async (p: string, obj: any, opts?: any) => {
+        const fsp = await import('node:fs/promises');
+        const spaces = opts?.spaces ?? 0;
+        await fsp.writeFile(p, JSON.stringify(obj, null, spaces), 'utf8');
+      },
+      writeJson: async (p: string, obj: any, opts?: any) => {
+        const fsp = await import('node:fs/promises');
+        const spaces = opts?.spaces ?? 0;
+        await fsp.writeFile(p, JSON.stringify(obj, null, spaces), 'utf8');
+      },
     }));
 
     const bytes = new Uint8Array([1, 2, 3, 4]);
