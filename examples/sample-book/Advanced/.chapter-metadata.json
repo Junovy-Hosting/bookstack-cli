@@ -1,4 +1,5 @@
 {
   "name": "Advanced Topics",
-  "description": "Deep dive into features"
+  "description": "Deep dive into features",
+  "priority": 2
 }

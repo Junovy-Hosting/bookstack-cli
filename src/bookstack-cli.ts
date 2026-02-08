@@ -378,6 +378,7 @@ bookCmd
     "Content format: markdown|html|plaintext",
     "markdown"
   )
+  .option("--structure <type>", "Export structure: legacy|nested (default: nested)", "nested")
   .option("--dry-run", "Preview files without writing")
   .action(async (bookArg: string, opts: any) => {
     try {
@@ -407,12 +408,19 @@ bookCmd
       const slug = book.slug || `book-${bookId}`;
       const outRoot = opts.dir || `./${slug}`;
       const fmt = String(opts.format).toLowerCase();
+      const structure = String(opts.structure || "nested").toLowerCase();
+
       if (!["markdown", "html", "plaintext"].includes(fmt)) {
         console.error("Invalid format. Use one of: markdown, html, plaintext");
         process.exit(1);
       }
-      const ext =
-        fmt === "plaintext" ? "txt" : fmt === "markdown" ? "md" : "html";
+
+      if (!["legacy", "nested"].includes(structure)) {
+        console.error("Invalid structure. Use one of: legacy, nested");
+        process.exit(1);
+      }
+
+      const ext = fmt === "plaintext" ? "txt" : fmt === "markdown" ? "md" : "html";
 
       const contents = (book as any).contents || (book as any).content || [];
       const chapters = contents.filter((c: any) => c.type === "chapter");
@@ -421,12 +429,22 @@ bookCmd
       // Ensure root
       if (!opts.dryRun) await fs.ensureDir(outRoot);
       console.log(
-        `Exporting to ${outRoot} in ${fmt} format${
+        `Exporting to ${outRoot} in ${fmt} format (${structure} structure)${
           opts.dryRun ? " (dry-run)" : ""
         }`
       );
 
-      // Export top-level pages
+      // Export book metadata
+      if (structure === "nested" && !opts.dryRun) {
+        const bookMeta = {
+          name: book.name,
+          description: book.description || undefined
+        };
+        const bookMetaPath = require("path").join(outRoot, ".book-metadata.json");
+        await fs.writeFile(bookMetaPath, JSON.stringify(bookMeta, null, 2) + "\n", "utf8");
+      }
+
+      // Calculate total for progress bar
       const total =
         pages.length +
         chapters.reduce(
@@ -438,46 +456,19 @@ bookCmd
       const t0 = Date.now();
       let files = 0;
       let bytes = 0;
-      for (const p of pages) {
-        const filename = `${sanitize(p.slug || p.name)}-${p.id}.${ext}`;
-        const outPath = require("path").join(outRoot, filename);
-        if (opts.dryRun) {
-          console.log(`  Would write: ${outPath}`);
-        } else {
-          const text = await client.exportPage(p.id, fmt as any);
-          await fs.writeFile(outPath, text, "utf8");
-          // console.log(`  Wrote: ${outPath}`);
-          bytes += Buffer.byteLength(text, 'utf8');
-        }
-        files += 1;
-        bar.tick(1);
+
+      if (structure === "legacy") {
+        // Legacy export (existing behavior)
+        const result = await exportLegacyStructure(client, outRoot, pages, chapters, fmt, ext, opts, bar);
+        files += result.files;
+        bytes += result.bytes;
+      } else {
+        // New nested export
+        const result = await exportNestedStructure(client, outRoot, pages, chapters, fmt, ext, opts, bar);
+        files += result.files;
+        bytes += result.bytes;
       }
 
-      // Export chapters & pages
-      for (const ch of chapters) {
-        const chDir = require("path").join(
-          outRoot,
-          `${sanitize(ch.slug || ch.name)}-${ch.id}`
-        );
-        if (opts.dryRun) console.log(`  Would ensure dir: ${chDir}`);
-        else await fs.ensureDir(chDir);
-
-        const chPages = Array.isArray(ch.pages) ? ch.pages : [];
-        for (const p of chPages) {
-          const filename = `${sanitize(p.slug || p.name)}-${p.id}.${ext}`;
-          const outPath = require("path").join(chDir, filename);
-          if (opts.dryRun) {
-            console.log(`    Would write: ${outPath}`);
-          } else {
-            const text = await client.exportPage(p.id, fmt as any);
-            await fs.writeFile(outPath, text, "utf8");
-            // console.log(`    Wrote: ${outPath}`);
-            bytes += Buffer.byteLength(text, 'utf8');
-          }
-          files += 1;
-          bar.tick(1);
-        }
-      }
       bar.stop("\n");
       const elapsed = Date.now() - t0;
       if (opts.dryRun) {
@@ -1519,6 +1510,142 @@ function escapeFilterValue(val: string): string {
   // Wrap in quotes if contains spaces or special chars to be safe
   if (/\s/.test(val)) return `"${val.replace(/"/g, '\\"')}"`;
   return val;
+}
+
+async function exportLegacyStructure(client: BookStackClient, outRoot: string, pages: any[], chapters: any[], fmt: string, ext: string, opts: any, bar: any): Promise<{files: number, bytes: number}> {
+  let files = 0;
+  let bytes = 0;
+
+  // Export top-level pages (legacy format)
+  for (const p of pages) {
+    const filename = `${sanitize(p.slug || p.name)}-${p.id}.${ext}`;
+    const outPath = path.join(outRoot, filename);
+    if (opts.dryRun) {
+      console.log(`  Would write: ${outPath}`);
+    } else {
+      const text = await client.exportPage(p.id, fmt as any);
+      await fs.writeFile(outPath, text, "utf8");
+      bytes += Buffer.byteLength(text, 'utf8');
+    }
+    files += 1;
+    bar.tick(1);
+  }
+
+  // Export chapters & pages (legacy format)
+  for (const ch of chapters) {
+    const chDir = path.join(
+      outRoot,
+      `${sanitize(ch.slug || ch.name)}-${ch.id}`
+    );
+    if (opts.dryRun) console.log(`  Would ensure dir: ${chDir}`);
+    else await fs.ensureDir(chDir);
+
+    const chPages = Array.isArray(ch.pages) ? ch.pages : [];
+    for (const p of chPages) {
+      const filename = `${sanitize(p.slug || p.name)}-${p.id}.${ext}`;
+      const outPath = path.join(chDir, filename);
+      if (opts.dryRun) {
+        console.log(`    Would write: ${outPath}`);
+      } else {
+        const text = await client.exportPage(p.id, fmt as any);
+        await fs.writeFile(outPath, text, "utf8");
+        bytes += Buffer.byteLength(text, 'utf8');
+      }
+      files += 1;
+      bar.tick(1);
+    }
+  }
+
+  return { files, bytes };
+}
+
+async function exportNestedStructure(client: BookStackClient, outRoot: string, pages: any[], chapters: any[], fmt: string, ext: string, opts: any, bar: any): Promise<{files: number, bytes: number}> {
+  let files = 0;
+  let bytes = 0;
+
+  // Export top-level pages as page folders
+  for (const p of pages) {
+    const pageDir = path.join(outRoot, sanitize(p.slug || p.name));
+    if (!opts.dryRun) await fs.ensureDir(pageDir);
+
+    // Export page metadata
+    if (!opts.dryRun) {
+      const pageMeta = {
+        name: p.name,
+        priority: p.priority || undefined
+      };
+      const metaPath = path.join(pageDir, ".page-metadata.json");
+      await fs.writeFile(metaPath, JSON.stringify(pageMeta, null, 2) + "\n", "utf8");
+    }
+
+    // Export page content
+    const contentPath = path.join(pageDir, `page.${ext}`);
+    if (opts.dryRun) {
+      console.log(`  Would create page folder: ${pageDir}`);
+      console.log(`    Would write metadata: ${pageDir}/.page-metadata.json`);
+      console.log(`    Would write content: ${contentPath}`);
+    } else {
+      const text = await client.exportPage(p.id, fmt as any);
+      await fs.writeFile(contentPath, text, "utf8");
+      bytes += Buffer.byteLength(text, 'utf8');
+    }
+    files += 1;
+    bar.tick(1);
+  }
+
+  // Export chapters with nested page structure
+  for (const ch of chapters) {
+    const chDir = path.join(outRoot, sanitize(ch.slug || ch.name));
+    if (!opts.dryRun) await fs.ensureDir(chDir);
+
+    // Export chapter metadata
+    if (!opts.dryRun) {
+      const chapterMeta = {
+        name: ch.name,
+        description: ch.description || undefined,
+        priority: ch.priority || undefined
+      };
+      const metaPath = path.join(chDir, ".chapter-metadata.json");
+      await fs.writeFile(metaPath, JSON.stringify(chapterMeta, null, 2) + "\n", "utf8");
+    }
+
+    if (opts.dryRun) {
+      console.log(`  Would create chapter folder: ${chDir}`);
+      console.log(`    Would write metadata: ${chDir}/.chapter-metadata.json`);
+    }
+
+    const chPages = Array.isArray(ch.pages) ? ch.pages : [];
+    for (const p of chPages) {
+      const pageDir = path.join(chDir, sanitize(p.slug || p.name));
+      if (!opts.dryRun) await fs.ensureDir(pageDir);
+
+      // Export page metadata
+      if (!opts.dryRun) {
+        const pageMeta = {
+          name: p.name,
+          priority: p.priority || undefined
+        };
+        const metaPath = path.join(pageDir, ".page-metadata.json");
+        await fs.writeFile(metaPath, JSON.stringify(pageMeta, null, 2) + "\n", "utf8");
+      }
+
+      // Export page content
+      const contentPath = path.join(pageDir, `page.${ext}`);
+      if (opts.dryRun) {
+        console.log(`      Would create page folder: ${pageDir}`);
+        console.log(`        Would write metadata: ${pageDir}/.page-metadata.json`);
+        console.log(`        Would write content: ${contentPath}`);
+      } else {
+        const text = await client.exportPage(p.id, fmt as any);
+        await fs.writeFile(contentPath, text, "utf8");
+        bytes += Buffer.byteLength(text, 'utf8');
+      }
+      files += 1;
+      bar.tick(1);
+    }
+  }
+
+  return { files, bytes };
 }
 
 function sanitize(input: string): string {

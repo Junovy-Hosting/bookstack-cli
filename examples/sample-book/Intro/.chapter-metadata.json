@@ -1,4 +1,5 @@
 {
   "name": "Getting Started",
-  "description": "Overview and first steps"
+  "description": "Overview and first steps",
+  "priority": 1
 }

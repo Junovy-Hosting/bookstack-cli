@@ -50,7 +50,16 @@ Thumbs.db
 *.swo
 *~
 
+# Exports
+exports/
+
+# Imports
+imports/
+
 # Temporary files
 tmp/
 temp/
 *.bun-build
+
+# Claude Code
+.claude/

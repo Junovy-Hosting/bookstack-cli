@@ -1,6 +1,6 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { BookStackClient, Book, Page } from '../bookstack-client';
+import { BookStackClient, Book, Chapter, Page } from '../bookstack-client';
 import { createSpinner, createProgressBar, c } from '../ui';
 
 export interface ImportOptions {
@@ -132,15 +132,11 @@ export class ImportCommand {
         }
       }
 
-      const chapter = await this.getOrCreateChapter(targetBook.id, chapterName, chapterMeta.description || '', !!options.dryRun);
+      const chapter = await this.getOrCreateChapter(targetBook.id, chapterName, chapterMeta.description || '', chapterMeta.priority, !!options.dryRun);
       console.log(`  Using chapter: ${chapterName} (Book ID: ${targetBook.id})`);
 
-      // Import files within this subdirectory into the chapter
-      await this.walkFiles(itemPath, maxDepth - 1, async (filePath, relName) => {
-        if (!this.isSupportedFile(filePath)) return;
-        await this.createPageInChapter(targetBook.id, chapter.id, filePath, path.basename(filePath), options);
-        bar.tick(1);
-      });
+      // Import pages within this chapter directory
+      await this.processChapterContents(targetBook.id, chapter.id, itemPath, options, bar);
     }
     bar.stop('\n');
   }
@@ -148,18 +144,46 @@ export class ImportCommand {
   private async countFiles(dirPath: string, options: ImportOptions): Promise<number> {
     const items = await fs.readdir(dirPath);
     let total = 0;
+
+    // Count root-level files
     for (const item of items) {
       const p = path.join(dirPath, item);
       const st = await fs.stat(p);
       if (st.isFile() && this.isSupportedFile(item)) total++;
     }
-    const maxDepth = Number.isFinite(options.maxDepth as number) ? (options.maxDepth as number) : 10;
+
+    // Count files in subdirectories (chapters)
     for (const item of items) {
       const p = path.join(dirPath, item);
       const st = await fs.stat(p);
       if (!st.isDirectory()) continue;
-      await this.walkFiles(p, maxDepth - 1, async (file) => { if (this.isSupportedFile(file)) total++; });
+
+      total += await this.countChapterFiles(p, options);
     }
+    return total;
+  }
+
+  private async countChapterFiles(chapterPath: string, options: ImportOptions): Promise<number> {
+    const entries = await fs.readdir(chapterPath);
+    let total = 0;
+
+    for (const entry of entries) {
+      const entryPath = path.join(chapterPath, entry);
+      const stats = await fs.stat(entryPath);
+
+      // Skip metadata files
+      if (entry === '.chapter-metadata.json') continue;
+
+      if (stats.isDirectory()) {
+        // This is a page folder - count it as 1
+        const hasContent = await this.findPageContent(entryPath);
+        if (hasContent) total++;
+      } else if (stats.isFile() && this.isSupportedFile(entry)) {
+        // This is a legacy flat file - count it
+        total++;
+      }
+    }
+
     return total;
   }
 
@@ -185,7 +209,7 @@ export class ImportCommand {
   private async createPageInChapter(bookId: number, chapterId: number, filePath: string, displayName: string, options: ImportOptions) {
     const fileName = path.basename(displayName, path.extname(displayName));
     const content = await fs.readFile(filePath, 'utf-8');
-    console.log(`    Processing file: ${fileName}`);
+    console.log(`      Processing legacy file: ${fileName}`);
     const fmt = options.format || this.detectFormat(filePath);
     const pageData = {
       book_id: bookId,
@@ -195,32 +219,47 @@ export class ImportCommand {
       markdown: fmt === 'markdown' ? content : undefined,
     } as Partial<Page>;
     if (options.dryRun) {
-      console.log(`      Would create page in chapter: ${pageData.name}`);
+      console.log(`        Would create page: ${pageData.name} (legacy format)`);
     } else {
       const page = await this.client.createPage(pageData);
-      console.log(`      Created page: ${page.name} (ID: ${page.id})`);
+      console.log(`        Created page: ${page.name} (ID: ${page.id}, legacy format)`);
     }
   }
 
-  private async getOrCreateChapter(bookId: number, name: string, description: string, dryRun: boolean) {
+  private async getOrCreateChapter(bookId: number, name: string, description: string, priority: number | undefined, dryRun: boolean) {
     if (dryRun) {
-      return { id: 1, name, slug: name.toLowerCase().replace(/\s+/g, '-'), book_id: bookId, priority: 0, created_at: '', updated_at: '' } as any;
+      return { id: 1, name, slug: name.toLowerCase().replace(/\s+/g, '-'), book_id: bookId, priority: priority || 0, created_at: '', updated_at: '' } as any;
     }
     const existing = await this.client.getChapters(bookId);
     const found = existing.find(c => c.name.toLowerCase() === name.toLowerCase());
     if (found) return found;
-    return await this.client.createChapter(bookId, { name, description });
+    const chapterData: Partial<Chapter> = { name, description };
+    if (priority !== undefined) chapterData.priority = priority;
+    return await this.client.createChapter(bookId, chapterData);
   }
 
-  private async readChapterMetadata(dir: string): Promise<{ name?: string; description?: string }> {
+  private async readChapterMetadata(dir: string): Promise<{ name?: string; description?: string; priority?: number }> {
     const metaPath = path.join(dir, '.chapter-metadata.json');
     try {
       if (await fs.pathExists(metaPath)) {
-        const data = JSON.parse(await fs.readFile(metaPath, 'utf8')) as { name?: string; description?: string };
-        return { name: data.name, description: data.description };
+        const data = JSON.parse(await fs.readFile(metaPath, 'utf8')) as { name?: string; description?: string; priority?: number };
+        return { name: data.name, description: data.description, priority: data.priority };
       }
     } catch (e) {
       console.warn(`  Warning: failed to parse ${metaPath}: ${(e as Error).message}`);
+    }
+    return {};
+  }
+
+  private async readPageMetadata(dir: string): Promise<{ name?: string; priority?: number }> {
+    const metaPath = path.join(dir, '.page-metadata.json');
+    try {
+      if (await fs.pathExists(metaPath)) {
+        const data = JSON.parse(await fs.readFile(metaPath, 'utf8')) as { name?: string; priority?: number };
+        return { name: data.name, priority: data.priority };
+      }
+    } catch (e) {
+      console.warn(`    Warning: failed to parse ${metaPath}: ${(e as Error).message}`);
     }
     return {};
   }
@@ -236,6 +275,79 @@ export class ImportCommand {
       console.warn(`Warning: failed to parse ${metaPath}: ${(e as Error).message}`);
     }
     return {};
+  }
+
+  private async findPageContent(pageDir: string): Promise<string | null> {
+    // Look for content files in priority order
+    const candidates = ['page.md', 'index.md', 'content.md', 'README.md'];
+    for (const candidate of candidates) {
+      const filePath = path.join(pageDir, candidate);
+      if (await fs.pathExists(filePath)) {
+        return filePath;
+      }
+    }
+    return null;
+  }
+
+  private async processPageFolder(bookId: number, chapterId: number, pageFolderPath: string, options: ImportOptions) {
+    const folderName = path.basename(pageFolderPath);
+    console.log(`      Processing page folder: ${folderName}`);
+
+    // Read page metadata
+    const pageMeta = await this.readPageMetadata(pageFolderPath);
+
+    // Find content file
+    const contentPath = await this.findPageContent(pageFolderPath);
+    if (!contentPath) {
+      console.warn(`      Warning: No content file found in page folder: ${folderName}`);
+      return;
+    }
+
+    // Use metadata name or fallback to folder name
+    const pageName = pageMeta.name || folderName;
+    const content = await fs.readFile(contentPath, 'utf-8');
+    const fmt = options.format || this.detectFormat(contentPath);
+
+    const pageData = {
+      book_id: bookId,
+      chapter_id: chapterId,
+      name: pageName,
+      html: this.convertToHtml(content, fmt),
+      markdown: fmt === 'markdown' ? content : undefined,
+    } as Partial<Page>;
+
+    if (pageMeta.priority !== undefined) {
+      pageData.priority = pageMeta.priority;
+    }
+
+    if (options.dryRun) {
+      console.log(`        Would create page: ${pageName} (priority: ${pageMeta.priority ?? 'default'})`);
+    } else {
+      const page = await this.client.createPage(pageData);
+      console.log(`        Created page: ${page.name} (ID: ${page.id}, priority: ${page.priority})`);
+    }
+  }
+
+  private async processChapterContents(bookId: number, chapterId: number, chapterPath: string, options: ImportOptions, bar: any) {
+    const entries = await fs.readdir(chapterPath);
+
+    for (const entry of entries) {
+      const entryPath = path.join(chapterPath, entry);
+      const stats = await fs.stat(entryPath);
+
+      // Skip metadata files
+      if (entry === '.chapter-metadata.json') continue;
+
+      if (stats.isDirectory()) {
+        // This is a page folder - process it
+        await this.processPageFolder(bookId, chapterId, entryPath, options);
+        bar.tick(1);
+      } else if (stats.isFile() && this.isSupportedFile(entry)) {
+        // This is a legacy flat file - process it the old way
+        await this.createPageInChapter(bookId, chapterId, entryPath, path.basename(entry), options);
+        bar.tick(1);
+      }
+    }
   }
 
   private async deriveNameFromReadme(dir: string): Promise<string | undefined> {

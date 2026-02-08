@@ -211,19 +211,40 @@ Precedence for the book name is: CLI `--book` > `.book-metadata.json` > director
 
 ### Chapter Metadata (.chapter-metadata.json)
 
-Place an optional `.chapter-metadata.json` file inside any subdirectory to customize the chapter’s details:
+Place an optional `.chapter-metadata.json` file inside any subdirectory to customize the chapter's details:
 
 ```json
 {
   "name": "Human Readable Chapter Name",
-  "description": "Optional description shown in BookStack"
+  "description": "Optional description shown in BookStack",
+  "priority": 1
 }
 ```
+
+The `priority` field controls the order of chapters within the book (lower numbers appear first).
 
 If no metadata is present, chapter names are derived by `--chapter-from`:
 
 - `dir` (default): use the directory name
 - `readme`: use the first Markdown heading (or first non-empty line) from `README.md`/`index.md` in that folder
+
+### Page Metadata (.page-metadata.json)
+
+For nested page structure (pages in their own folders), place an optional `.page-metadata.json` file inside any page folder:
+
+```json
+{
+  "name": "Human Readable Page Name",
+  "priority": 1
+}
+```
+
+The `priority` field controls the order of pages within their chapter (lower numbers appear first).
+
+**Page Folder Structure**:
+- `page-name/` (folder named after page slug)
+  - `page.md` (or `.html`/`.txt` based on format)
+  - `.page-metadata.json` (optional)
 
 ### Import Options
 
@@ -384,15 +405,36 @@ Output modes:
 Export a book's contents to a folder structure:
 
 ```bash
-# write markdown files under ./<book-slug>/
+# write markdown files under ./<book-slug>/ (nested structure with metadata)
 bookstack book export-contents <id|name|slug> --format markdown
 
 # choose directory and format
 bookstack book export-contents <id|name|slug> --format html --dir ./out
 
+# export with legacy flat structure (backward compatibility)
+bookstack book export-contents <id|name|slug> --structure legacy
+
+# export with new nested structure (default)
+bookstack book export-contents <id|name|slug> --structure nested
+
 # preview without writing
 bookstack book export-contents <id|name|slug> --dry-run
 ```
+
+#### Export Structure Options
+
+**Nested Structure (default)**: Creates a modern folder-based structure with metadata files:
+- Each page gets its own folder named after the page slug
+- Page content is stored as `page.md` (or `.html`/`.txt`)
+- Page metadata stored in `.page-metadata.json` with name and priority
+- Chapter folders contain `.chapter-metadata.json` with name, description, and priority
+- Book metadata stored in `.book-metadata.json` with name and description
+- Compatible with the enhanced import functionality
+
+**Legacy Structure**: Creates the original flat structure for backward compatibility:
+- Chapter folders named `<chapter-slug>-<id>`
+- Page files named `<page-slug>-<id>.md`
+- No metadata files
 
 ### Search
 

@@ -21,18 +21,24 @@ bun run dev -- config show
 ## Example Usage Commands
 
 ### Chapter demo
-This repository includes a sample directory structure demonstrating chapter metadata:
+This repository includes a sample directory structure demonstrating chapter metadata and nested page structure:
 
 ```
 examples/sample-book/
+  .book-metadata.json           # book name + description
   Intro/
-    .chapter-metadata.json   # name + description
-    README.md
-    page1.md
+    .chapter-metadata.json      # name + description + priority
+    README.md                   # flat file (legacy)
+    page1.md                    # flat file (legacy)
   Advanced/
-    .chapter-metadata.json
-    adv.md
+    .chapter-metadata.json      # name + description + priority
+    adv.md                      # flat file (legacy)
+    nested-page-example/        # nested page folder
+      page.md                   # page content
+      .page-metadata.json       # name + priority
 ```
+
+This demonstrates both legacy flat files and the new nested page structure.
 
 Dry run import as a book with chapters:
 ```bash
