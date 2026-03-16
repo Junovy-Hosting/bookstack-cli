@@ -1,7 +1,7 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { BookStackClient, Book, Chapter, Page } from '../bookstack-client';
-import { createSpinner, createProgressBar, c } from '../ui';
+import { createSpinner, createProgressBar, c, icons } from '../ui';
 
 export interface ImportOptions {
   book?: string;
@@ -12,16 +12,63 @@ export interface ImportOptions {
   flatten?: boolean; // import all files into book directly
 }
 
+interface ProgressBar {
+  tick(n?: number): void;
+  update(n: number): void;
+  log(msg: string): void;
+  stop(msg?: string): void;
+}
+
 export class ImportCommand {
   constructor(private client: BookStackClient) {}
 
+  // Cache of existing pages per book to avoid repeated API calls
+  private bookPagesCache: Map<number, Page[]> = new Map();
+
+  private async getBookPages(bookId: number): Promise<Page[]> {
+    if (!this.bookPagesCache.has(bookId)) {
+      this.bookPagesCache.set(bookId, await this.client.getPages(bookId));
+    }
+    return this.bookPagesCache.get(bookId)!;
+  }
+
+  private invalidateBookPagesCache(bookId: number): void {
+    this.bookPagesCache.delete(bookId);
+  }
+
+  private async getOrCreatePage(
+    bookId: number,
+    chapterId: number | undefined,
+    pageName: string,
+    pageData: Partial<Page>,
+    dryRun: boolean,
+  ): Promise<Page> {
+    if (dryRun) {
+      return { id: 0, name: pageName, slug: '', book_id: bookId, priority: 0, created_at: '', updated_at: '' } as Page;
+    }
+    const existingPages = await this.getBookPages(bookId);
+    const match = existingPages.find(
+      (p) =>
+        p.name.toLowerCase() === pageName.toLowerCase() &&
+        (chapterId === undefined || p.chapter_id === chapterId),
+    );
+    if (match) {
+      const updated = await this.client.updatePage(match.id, pageData);
+      this.invalidateBookPagesCache(bookId);
+      return updated;
+    }
+    const created = await this.client.createPage(pageData);
+    this.invalidateBookPagesCache(bookId);
+    return created;
+  }
+
   async execute(source: string, options: ImportOptions): Promise<void> {
-    console.log(`Importing from: ${source}`);
-    console.log(`Format: ${options.format || 'markdown'}`);
-    console.log(`Target book: ${options.book || 'auto-detect'}`);
-    
+    console.log(`${icons.info} Importing from: ${c.bold(source)}`);
+    console.log(`  Format: ${options.format || 'markdown'}`);
+    console.log(`  Target book: ${options.book || 'auto-detect'}`);
+
     if (options.dryRun) {
-      console.log('DRY RUN MODE - No changes will be made');
+      console.log(`${icons.warning} ${c.yellow('DRY RUN MODE')} - No changes will be made`);
     }
 
     // Test connection first (skip in dry run mode)
@@ -51,17 +98,17 @@ export class ImportCommand {
       throw new Error('Source must be a file or directory');
     }
 
-    console.log(c.green('Import completed!'));
+    console.log(`${icons.success} ${c.green('Import completed!')}`);
   }
 
   private async importFile(filePath: string, options: ImportOptions): Promise<void> {
     const fileName = path.basename(filePath, path.extname(filePath));
     const content = await fs.readFile(filePath, 'utf-8');
     
-    console.log(`Processing file: ${fileName}`);
+    console.log(`${icons.working} Processing file: ${c.bold(fileName)}`);
 
     const targetBook = await this.getTargetBook(options.book || fileName, options.dryRun);
-    
+
     const pageData = {
       book_id: targetBook.id,
       name: fileName,
@@ -70,11 +117,11 @@ export class ImportCommand {
     };
 
     if (options.dryRun) {
-      console.log(`  Would create page: ${pageData.name} in book: ${targetBook.name}`);
+      console.log(`${icons.dry} Would create page: ${pageData.name} in book: ${targetBook.name}`);
       console.log(`  Content length: ${content.length} characters`);
     } else {
       const page = await this.client.createPage(pageData);
-      console.log(`  Created page: ${page.name} (ID: ${page.id})`);
+      console.log(`${icons.success} Created page: ${page.name} ${c.gray(`(ID: ${page.id})`)}`);
     }
   }
 
@@ -86,10 +133,9 @@ export class ImportCommand {
     if (!options.dryRun && bookMeta.description) {
       try { await this.client.updateBook(targetBook.id, { description: bookMeta.description }); } catch {}
     }
-    console.log(c.bold(`Processing directory as book: ${targetBook.name}`));
-
     const total = await this.countFiles(dirPath, options);
     const bar = createProgressBar(total, 'Importing');
+    bar.log(`${icons.info} ${c.bold(`Processing directory as book: ${targetBook.name}`)}`);
 
     const maxDepth = Number.isFinite(options.maxDepth as number) ? (options.maxDepth as number) : 10;
     const chapterFrom = (options.chapterFrom || 'dir');
@@ -100,7 +146,7 @@ export class ImportCommand {
       const itemPath = path.join(dirPath, item);
       const stats = await fs.stat(itemPath);
       if (stats.isFile() && this.isSupportedFile(item)) {
-        await this.createPageInBook(targetBook.id, itemPath, item, options);
+        await this.createPageInBook(targetBook.id, itemPath, item, options, bar);
         bar.tick(1);
       }
     }
@@ -112,10 +158,10 @@ export class ImportCommand {
       if (!stats.isDirectory()) continue;
 
       if (flatten) {
-        console.log(`  Flattening subdirectory: ${item} (pages go directly under book)`);
+        bar.log(`  ${icons.info} Flattening: ${c.bold(item)} ${c.gray('(pages go directly under book)')}`);
         await this.walkFiles(itemPath, maxDepth - 1, async (filePath, relName) => {
           if (!this.isSupportedFile(filePath)) return;
-          await this.createPageInBook(targetBook.id, filePath, path.basename(filePath), options);
+          await this.createPageInBook(targetBook.id, filePath, path.basename(filePath), options, bar);
           bar.tick(1);
         });
         continue;
@@ -133,7 +179,8 @@ export class ImportCommand {
       }
 
       const chapter = await this.getOrCreateChapter(targetBook.id, chapterName, chapterMeta.description || '', chapterMeta.priority, !!options.dryRun);
-      console.log(`  Using chapter: ${chapterName} (Book ID: ${targetBook.id})`);
+      bar.log(`  ${icons.info} ${c.bold(chapterName)} ${c.gray(`(Book ID: ${targetBook.id})`)}`);
+
 
       // Import pages within this chapter directory
       await this.processChapterContents(targetBook.id, chapter.id, itemPath, options, bar);
@@ -187,42 +234,58 @@ export class ImportCommand {
     return total;
   }
 
-  private async createPageInBook(bookId: number, filePath: string, displayName: string, options: ImportOptions) {
+  private async createPageInBook(bookId: number, filePath: string, displayName: string, options: ImportOptions, bar: ProgressBar) {
     const fileName = path.basename(displayName, path.extname(displayName));
     const content = await fs.readFile(filePath, 'utf-8');
-    console.log(`  Processing file: ${fileName}`);
+    // Check if the file lives inside a page folder with metadata
+    const parentDir = path.dirname(filePath);
+    const pageMeta = await this.readPageMetadata(parentDir);
+    const pageName = pageMeta.name || fileName;
+    bar.log(`  ${icons.working} ${c.gray(pageName)}`);
     const fmt = options.format || this.detectFormat(filePath);
     const pageData = {
       book_id: bookId,
-      name: fileName,
+      name: pageName,
       html: this.convertToHtml(content, fmt),
       markdown: fmt === 'markdown' ? content : undefined,
     } as Partial<Page>;
+    if (pageMeta.priority !== undefined) {
+      pageData.priority = pageMeta.priority;
+    }
     if (options.dryRun) {
-      console.log(`    Would create page in book: ${pageData.name}`);
+      bar.log(`  ${icons.dry} Would create/update: ${pageData.name}`);
     } else {
-      const page = await this.client.createPage(pageData);
-      console.log(`    Created page: ${page.name} (ID: ${page.id})`);
+      const page = await this.getOrCreatePage(bookId, undefined, pageName, pageData, false);
+      const action = page.created_at === page.updated_at ? 'Created' : 'Updated';
+      bar.log(`  ${icons.success} ${action} page: ${page.name} ${c.gray(`(ID: ${page.id})`)}`);
     }
   }
 
-  private async createPageInChapter(bookId: number, chapterId: number, filePath: string, displayName: string, options: ImportOptions) {
+  private async createPageInChapter(bookId: number, chapterId: number, filePath: string, displayName: string, options: ImportOptions, bar: ProgressBar) {
     const fileName = path.basename(displayName, path.extname(displayName));
     const content = await fs.readFile(filePath, 'utf-8');
-    console.log(`      Processing legacy file: ${fileName}`);
+    // Check if the file lives inside a page folder with metadata
+    const parentDir = path.dirname(filePath);
+    const pageMeta = await this.readPageMetadata(parentDir);
+    const pageName = pageMeta.name || fileName;
+    bar.log(`    ${icons.working} ${c.gray(pageName)}`);
     const fmt = options.format || this.detectFormat(filePath);
     const pageData = {
       book_id: bookId,
       chapter_id: chapterId,
-      name: fileName,
+      name: pageName,
       html: this.convertToHtml(content, fmt),
       markdown: fmt === 'markdown' ? content : undefined,
     } as Partial<Page>;
+    if (pageMeta.priority !== undefined) {
+      pageData.priority = pageMeta.priority;
+    }
     if (options.dryRun) {
-      console.log(`        Would create page: ${pageData.name} (legacy format)`);
+      bar.log(`    ${icons.dry} Would create/update: ${pageData.name}`);
     } else {
-      const page = await this.client.createPage(pageData);
-      console.log(`        Created page: ${page.name} (ID: ${page.id}, legacy format)`);
+      const page = await this.getOrCreatePage(bookId, chapterId, pageName, pageData, false);
+      const action = page.created_at === page.updated_at ? 'Created' : 'Updated';
+      bar.log(`    ${icons.success} ${action} page: ${page.name} ${c.gray(`(ID: ${page.id})`)}`);
     }
   }
 
@@ -289,22 +352,21 @@ export class ImportCommand {
     return null;
   }
 
-  private async processPageFolder(bookId: number, chapterId: number, pageFolderPath: string, options: ImportOptions) {
+  private async processPageFolder(bookId: number, chapterId: number, pageFolderPath: string, options: ImportOptions, bar: ProgressBar) {
     const folderName = path.basename(pageFolderPath);
-    console.log(`      Processing page folder: ${folderName}`);
-
     // Read page metadata
     const pageMeta = await this.readPageMetadata(pageFolderPath);
 
     // Find content file
     const contentPath = await this.findPageContent(pageFolderPath);
     if (!contentPath) {
-      console.warn(`      Warning: No content file found in page folder: ${folderName}`);
+      bar.log(`    ${icons.warning} No content file found: ${c.gray(folderName)}`);
       return;
     }
 
     // Use metadata name or fallback to folder name
     const pageName = pageMeta.name || folderName;
+    bar.log(`    ${icons.working} ${c.gray(pageName)}`);
     const content = await fs.readFile(contentPath, 'utf-8');
     const fmt = options.format || this.detectFormat(contentPath);
 
@@ -321,14 +383,15 @@ export class ImportCommand {
     }
 
     if (options.dryRun) {
-      console.log(`        Would create page: ${pageName} (priority: ${pageMeta.priority ?? 'default'})`);
+      bar.log(`    ${icons.dry} Would create/update: ${pageName} ${c.gray(`(priority: ${pageMeta.priority ?? 'default'})`)}`);
     } else {
-      const page = await this.client.createPage(pageData);
-      console.log(`        Created page: ${page.name} (ID: ${page.id}, priority: ${page.priority})`);
+      const page = await this.getOrCreatePage(bookId, chapterId, pageName, pageData, false);
+      const action = page.created_at === page.updated_at ? 'Created' : 'Updated';
+      bar.log(`    ${icons.success} ${action} page: ${page.name} ${c.gray(`(ID: ${page.id}, priority: ${page.priority})`)}`);
     }
   }
 
-  private async processChapterContents(bookId: number, chapterId: number, chapterPath: string, options: ImportOptions, bar: any) {
+  private async processChapterContents(bookId: number, chapterId: number, chapterPath: string, options: ImportOptions, bar: ProgressBar) {
     const entries = await fs.readdir(chapterPath);
 
     for (const entry of entries) {
@@ -340,11 +403,11 @@ export class ImportCommand {
 
       if (stats.isDirectory()) {
         // This is a page folder - process it
-        await this.processPageFolder(bookId, chapterId, entryPath, options);
+        await this.processPageFolder(bookId, chapterId, entryPath, options, bar);
         bar.tick(1);
       } else if (stats.isFile() && this.isSupportedFile(entry)) {
         // This is a legacy flat file - process it the old way
-        await this.createPageInChapter(bookId, chapterId, entryPath, path.basename(entry), options);
+        await this.createPageInChapter(bookId, chapterId, entryPath, path.basename(entry), options, bar);
         bar.tick(1);
       }
     }
@@ -386,8 +449,8 @@ export class ImportCommand {
   }
 
   private async getTargetBook(bookName: string, dryRun: boolean = false): Promise<Book> {
-    console.log(`Looking for book: ${bookName}`);
-    
+    console.log(`${icons.working} Looking for book: ${c.bold(bookName)}`);
+
     if (dryRun) {
       // In dry-run mode, return a mock book
       return {
@@ -417,14 +480,14 @@ export class ImportCommand {
     }
     
     if (!book) {
-      console.log(`Book not found, creating new book: ${bookName}`);
+      console.log(`${icons.info} Book not found, creating: ${c.bold(bookName)}`);
       book = await this.client.createBook({
         name: bookName,
         description: `Book created by bookstack-cli import`
       });
-      console.log(`Created book: ${book.name} (ID: ${book.id})`);
+      console.log(`${icons.success} Created book: ${book.name} ${c.gray(`(ID: ${book.id})`)}`);
     } else {
-      console.log(`Using existing book: ${book.name} (ID: ${book.id})`);
+      console.log(`${icons.success} Using existing book: ${book.name} ${c.gray(`(ID: ${book.id})`)}`);
     }
     
     return book;

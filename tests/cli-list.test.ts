@@ -1,4 +1,5 @@
 import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
+import * as realUi from '../src/ui';
 
 // Capture console.log output for an async action
 async function withCapturedStdout(fn: () => Promise<void> | void) {
@@ -102,11 +103,11 @@ describe('CLI list commands', () => {
   it('lists images and supports --json', async () => {
     // For --json, the CLI sets quiet which normally silences console.log.
     // Override UI for this test so --json does not mute console.log.
+    // Only override configureUi to prevent --json quiet mode from silencing console.log.
+    // Spread real exports so other test files aren't affected by mock.module contamination.
     mock.module(new URL('../src/ui.ts', import.meta.url).href, () => ({
+      ...realUi,
       configureUi: () => {},
-      c: new Proxy({}, { get: () => (s: any) => String(s) }),
-      createSpinner: () => ({ start() { return this; }, succeed() { return this; }, fail() { return this; }, stop() {} }),
-      createProgressBar: () => ({ tick() {}, update() {}, stop() {} }),
     }));
     mockClient();
     const program = await loadProgram();

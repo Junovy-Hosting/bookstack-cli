@@ -7,7 +7,7 @@ import * as fs from "fs-extra";
 import * as path from "path";
 import { resolveConfig, redact } from "./config";
 import { isAxiosError } from "axios";
-import { c, createSpinner, createProgressBar, configureUi, formatBytes, formatDuration } from "./ui";
+import { c, createSpinner, createProgressBar, configureUi, formatBytes, formatDuration, icons } from "./ui";
 
 const program = new Command();
 
@@ -429,8 +429,8 @@ bookCmd
       // Ensure root
       if (!opts.dryRun) await fs.ensureDir(outRoot);
       console.log(
-        `Exporting to ${outRoot} in ${fmt} format (${structure} structure)${
-          opts.dryRun ? " (dry-run)" : ""
+        `${icons.info} Exporting to ${c.bold(outRoot)} in ${fmt} format ${c.gray(`(${structure} structure)`)}${
+          opts.dryRun ? ` ${c.yellow('(dry-run)')}` : ""
         }`
       );
 
@@ -472,9 +472,9 @@ bookCmd
       bar.stop("\n");
       const elapsed = Date.now() - t0;
       if (opts.dryRun) {
-        console.log(c.dim(`Dry-run summary: ${files} files would be written under ${outRoot}.`));
+        console.log(`${icons.dry} ${c.dim(`Dry-run summary: ${files} files would be written under ${outRoot}.`)}`);
       } else {
-        console.log(`Wrote ${files} files to ${outRoot} (${formatBytes(bytes)}, ${formatDuration(elapsed)}).`);
+        console.log(`${icons.success} ${c.green('Export completed!')} Wrote ${files} files to ${c.bold(outRoot)} ${c.gray(`(${formatBytes(bytes)}, ${formatDuration(elapsed)})`)}`);
       }
     } catch (error) {
       handleAxiosError(error);
@@ -1521,11 +1521,13 @@ async function exportLegacyStructure(client: BookStackClient, outRoot: string, p
     const filename = `${sanitize(p.slug || p.name)}-${p.id}.${ext}`;
     const outPath = path.join(outRoot, filename);
     if (opts.dryRun) {
-      console.log(`  Would write: ${outPath}`);
+      bar.log(`  ${icons.dry} Would write: ${c.gray(filename)}`);
     } else {
+      bar.log(`  ${icons.working} ${c.gray(p.name)}`);
       const text = await client.exportPage(p.id, fmt as any);
       await fs.writeFile(outPath, text, "utf8");
       bytes += Buffer.byteLength(text, 'utf8');
+      bar.log(`  ${icons.success} Exported: ${p.name} ${c.gray(`(${formatBytes(Buffer.byteLength(text, 'utf8'))})`)}`);
     }
     files += 1;
     bar.tick(1);
@@ -1537,19 +1539,22 @@ async function exportLegacyStructure(client: BookStackClient, outRoot: string, p
       outRoot,
       `${sanitize(ch.slug || ch.name)}-${ch.id}`
     );
-    if (opts.dryRun) console.log(`  Would ensure dir: ${chDir}`);
+    if (opts.dryRun) bar.log(`  ${icons.dry} Would create dir: ${c.gray(ch.name)}`);
     else await fs.ensureDir(chDir);
 
+    bar.log(`  ${icons.info} ${c.bold(ch.name)}`);
     const chPages = Array.isArray(ch.pages) ? ch.pages : [];
     for (const p of chPages) {
       const filename = `${sanitize(p.slug || p.name)}-${p.id}.${ext}`;
       const outPath = path.join(chDir, filename);
       if (opts.dryRun) {
-        console.log(`    Would write: ${outPath}`);
+        bar.log(`    ${icons.dry} Would write: ${c.gray(filename)}`);
       } else {
+        bar.log(`    ${icons.working} ${c.gray(p.name)}`);
         const text = await client.exportPage(p.id, fmt as any);
         await fs.writeFile(outPath, text, "utf8");
         bytes += Buffer.byteLength(text, 'utf8');
+        bar.log(`    ${icons.success} Exported: ${p.name} ${c.gray(`(${formatBytes(Buffer.byteLength(text, 'utf8'))})`)}`);
       }
       files += 1;
       bar.tick(1);
@@ -1581,13 +1586,13 @@ async function exportNestedStructure(client: BookStackClient, outRoot: string, p
     // Export page content
     const contentPath = path.join(pageDir, `page.${ext}`);
     if (opts.dryRun) {
-      console.log(`  Would create page folder: ${pageDir}`);
-      console.log(`    Would write metadata: ${pageDir}/.page-metadata.json`);
-      console.log(`    Would write content: ${contentPath}`);
+      bar.log(`  ${icons.dry} Would export page: ${c.gray(p.name)}`);
     } else {
+      bar.log(`  ${icons.working} ${c.gray(p.name)}`);
       const text = await client.exportPage(p.id, fmt as any);
       await fs.writeFile(contentPath, text, "utf8");
       bytes += Buffer.byteLength(text, 'utf8');
+      bar.log(`  ${icons.success} Exported: ${p.name} ${c.gray(`(${formatBytes(Buffer.byteLength(text, 'utf8'))})`)}`);
     }
     files += 1;
     bar.tick(1);
@@ -1609,10 +1614,7 @@ async function exportNestedStructure(client: BookStackClient, outRoot: string, p
       await fs.writeFile(metaPath, JSON.stringify(chapterMeta, null, 2) + "\n", "utf8");
     }
 
-    if (opts.dryRun) {
-      console.log(`  Would create chapter folder: ${chDir}`);
-      console.log(`    Would write metadata: ${chDir}/.chapter-metadata.json`);
-    }
+    bar.log(`  ${icons.info} ${c.bold(ch.name)}`);
 
     const chPages = Array.isArray(ch.pages) ? ch.pages : [];
     for (const p of chPages) {
@@ -1632,13 +1634,13 @@ async function exportNestedStructure(client: BookStackClient, outRoot: string, p
       // Export page content
       const contentPath = path.join(pageDir, `page.${ext}`);
       if (opts.dryRun) {
-        console.log(`      Would create page folder: ${pageDir}`);
-        console.log(`        Would write metadata: ${pageDir}/.page-metadata.json`);
-        console.log(`        Would write content: ${contentPath}`);
+        bar.log(`    ${icons.dry} Would export page: ${c.gray(p.name)}`);
       } else {
+        bar.log(`    ${icons.working} ${c.gray(p.name)}`);
         const text = await client.exportPage(p.id, fmt as any);
         await fs.writeFile(contentPath, text, "utf8");
         bytes += Buffer.byteLength(text, 'utf8');
+        bar.log(`    ${icons.success} Exported: ${p.name} ${c.gray(`(${formatBytes(Buffer.byteLength(text, 'utf8'))})`)}`);
       }
       files += 1;
       bar.tick(1);

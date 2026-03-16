@@ -1,4 +1,5 @@
 import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
+import * as realUi from '../src/ui';
 
 // Capture console.log output for an async action
 async function withCapturedStdout(fn: () => Promise<void> | void) {
@@ -74,9 +75,8 @@ describe('Single-resource commands', () => {
   it('book show <name> --json outputs structured JSON', async () => {
     // Prevent quiet mode from silencing console.log when --json is used
     mock.module(new URL('../src/ui.ts', import.meta.url).href, () => ({
+      ...realUi,
       configureUi: () => {},
-      c: new Proxy({}, { get: () => (s: any) => String(s) }),
-      createSpinner: () => ({ start() { return this; }, succeed() { return this; }, fail() { return this; }, stop() {} }),
     }));
     mockClient();
     const program = await loadProgram();
@@ -104,9 +104,8 @@ describe('Single-resource commands', () => {
 
   it('chapter show <id> --json outputs structured JSON', async () => {
     mock.module(new URL('../src/ui.ts', import.meta.url).href, () => ({
+      ...realUi,
       configureUi: () => {},
-      c: new Proxy({}, { get: () => (s: any) => String(s) }),
-      createSpinner: () => ({ start() { return this; }, succeed() { return this; }, fail() { return this; }, stop() {} }),
     }));
     mockClient();
     const program = await loadProgram();
@@ -134,9 +133,8 @@ describe('Single-resource commands', () => {
 
   it('page show <id> --json outputs structured JSON', async () => {
     mock.module(new URL('../src/ui.ts', import.meta.url).href, () => ({
+      ...realUi,
       configureUi: () => {},
-      c: new Proxy({}, { get: () => (s: any) => String(s) }),
-      createSpinner: () => ({ start() { return this; }, succeed() { return this; }, fail() { return this; }, stop() {} }),
     }));
     mockClient();
     const program = await loadProgram();
@@ -176,9 +174,8 @@ describe('Single-resource commands', () => {
     mock.restore();
     mockClient();
     mock.module(new URL('../src/ui.ts', import.meta.url).href, () => ({
+      ...realUi,
       configureUi: () => {},
-      c: new Proxy({}, { get: () => (s: any) => String(s) }),
-      createSpinner: () => ({ start() { return this; }, succeed() { return this; }, fail() { return this; }, stop() {} }),
     }));
     program = await loadProgram();
     const jsonOut = await withCapturedStdout(async () => {

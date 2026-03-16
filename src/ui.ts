@@ -86,7 +86,7 @@ export function createSpinner(text: string) {
 
 export function createProgressBar(total: number, label = 'Progress') {
   if (quietEnabled) {
-    return { tick() {}, update() {}, stop() {} } as any;
+    return { tick() {}, update() {}, stop() {}, log() {} } as any;
   }
   let current = 0;
   const width = Math.max(20, Math.min(40, process.stdout.columns ? Math.floor(process.stdout.columns * 0.3) : 30));
@@ -103,9 +103,20 @@ export function createProgressBar(total: number, label = 'Progress') {
   return {
     tick(n = 1) { current += n; if (current > total) current = total; draw(); },
     update(n: number) { current = Math.max(0, Math.min(total, n)); draw(); },
+    log(msg: string) { clear(); process.stderr.write(`${msg}\n`); draw(); },
     stop(msg?: string) { clear(); if (msg) process.stderr.write(`${msg}\n`); },
   };
 }
+
+// Status icons for log output
+export const icons = {
+  get success() { return c.green('✓'); },
+  get error() { return c.red('✗'); },
+  get info() { return c.cyan('◆'); },
+  get working() { return c.blue('⏺'); },
+  get warning() { return c.yellow('⚠'); },
+  get dry() { return c.gray('○'); },
+};
 
 export function formatBytes(n: number): string {
   const units = ['B','KB','MB','GB','TB'];

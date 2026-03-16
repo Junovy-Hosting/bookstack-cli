@@ -64,3 +64,6 @@ temp/
 # Claude Code
 .claude/
 docs/plans/
+
+# Serena
+.serena/
