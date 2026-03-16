@@ -1,6 +1,9 @@
 import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
 import * as realUi from '../src/ui';
 
+// Strip ANSI escape codes for predictable test assertions
+const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, '');
+
 // Capture console.log output for an async action
 async function withCapturedStdout(fn: () => Promise<void> | void) {
   let out = '';
@@ -14,7 +17,7 @@ async function withCapturedStdout(fn: () => Promise<void> | void) {
   } finally {
     console.log = origLog;
   }
-  return out;
+  return stripAnsi(out);
 }
 
 function mockClient(overrides: Partial<Record<string, any>> = {}) {
