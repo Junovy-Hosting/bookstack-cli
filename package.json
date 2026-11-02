@@ -51,7 +51,7 @@
     "picocolors": "^1.0.1",
     "dotenv": "^16.4.5",
     "fs-extra": "^11.3.2",
-    "toml": "^3.0.0",
+    "toml": "^5.0.0",
     "yaml": "^2.5.0"
   },
   "devDependencies": {

@@ -9,7 +9,7 @@
         "dotenv": "^16.4.5",
         "fs-extra": "^11.3.2",
         "picocolors": "^1.0.1",
-        "toml": "^3.0.0",
+        "toml": "^5.0.0",
         "yaml": "^2.5.0",
       },
       "devDependencies": {
@@ -84,7 +84,7 @@
 
     "proxy-from-env": ["proxy-from-env@1.1.0", "", {}, "sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg=="],
 
-    "toml": ["toml@3.0.0", "", {}, "sha512-y/mWCZinnvxjTKYhJ+pYxwD0mRLVvOtdS2Awbgxln6iEnt4rk0yBxeSBHkGJcPucRiG0e55mwWp+g/05rsrd6w=="],
+    "toml": ["toml@5.0.1", "", {}, "sha512-EqYNA/YvUNndrA2B3O2ojzLQoTQrBxeZ9UIjQwk8t10oe6n7dwclBwd9IdZQTOKwe6vWX+AXtl6IntXRbepdxQ=="],
 
     "typescript": ["typescript@5.9.2", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-CWBzXQrc/qOkhidw1OzBTQuYRbfyxDXJMVJ1XNwUHGROVmuaeiEm3OslpZ1RV96d7SKKjZKrSJu3+t/xlw3R9A=="],
 
